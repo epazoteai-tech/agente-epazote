@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+
+.claude/
+.railway/
+
+# Transcripciones y usage de `npm run test:modelo` (conversaciones completas)
+pruebas/.resultados/

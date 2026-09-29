@@ -1,0 +1,38 @@
+{
+  "name": "bot-epazote",
+  "version": "1.0.0",
+  "description": "Bot de WhatsApp de Restaurante Epazote (solicitudes de reserva), sobre GoHighLevel + Claude",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "migrate": "node dist/db/migrate.js",
+    "migrate:dev": "ts-node src/db/migrate.ts",
+    "test:cancelar": "TZ=UTC node pruebas/cancelar-cita.js",
+    "test:razonamiento": "TZ=UTC node pruebas/strip-razonamiento.js",
+    "test:modelo": "node pruebas/medir-modelo.js",
+    "test:horario": "npm run build && TZ=UTC node pruebas/horario.js",
+    "test:agendar": "npm run build && node -r dotenv/config pruebas/agendar.js",
+    "test:guards": "TZ=UTC node pruebas/guards.js",
+    "test:reservas": "npm run build && TZ=UTC node pruebas/reservas.js",
+    "test": "npm run build && npm run test:guards && npm run test:razonamiento && npm run test:cancelar && TZ=UTC node pruebas/horario.js && TZ=UTC node pruebas/reservas.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.36.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "pg-boss": "^9.0.3",
+    "yaml": "^2.5.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.7",
+    "@types/pg": "^8.11.5",
+    "ts-node-dev": "^2.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

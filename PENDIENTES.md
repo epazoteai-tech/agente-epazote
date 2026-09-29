@@ -21,7 +21,7 @@ el equipo").
 ## 🚨 Bloqueantes técnicos (auditoría errores-bot, 29/09/2026)
 
 1. **La cuenta de Anthropic de Epazote NO TIENE CRÉDITO.** Es la misma llave que está en Railway: con WhatsApp conectado, el bot no le contestaría a nadie y `/health` seguiría en 200. Cargar saldo en console.anthropic.com → Plans & Billing. Después: `npm run test:modelo claude-sonnet-4-6 claude-haiku-4-5`.
-2. **E144 (ráfagas perdidas) no está en este bot.** GHL no dispara el webhook de ~20% de los mensajes que llegan pegados al anterior ("hola" + "mesa para 4 mañana a las 9"). El arreglo existe en `DRA MARIANA DELGADO/bot-dra-mariana/src/services/inbound.ts` (con las dos trampas de portarlo documentadas en E144). Portarlo antes de encender pauta.
+2. ✅ **E144 (ráfagas perdidas) portado** el 29/09/2026 (commit a3d7f74): el texto sale de la API de GHL por tres puertas (webhook, inicio del turno, barrido cada minuto). Con loop-guard incluido. En logs: `[reconciliador] RECUPERADOS …` es un mensaje que GHL nunca avisó. Si la tabla `mensajes_incorporados` se queda vacía con tráfico, la deduplicación está apagada (E145).
 3. **La plantilla `bot-ghl-template` tiene trabajo sin commitear de otra sesión** (`verificar-llaves.ts`, `index.ts`). Cuando esa sesión cierre, subirle el chequeo de crédito (ver nota nueva en E156).
 
 ## Datos del negocio por confirmar (Jorge / Gustavo)

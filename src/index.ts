@@ -6,6 +6,7 @@ import { timingSafeEqual } from 'crypto';
 import { webhookRouter } from './routes/webhook';
 import { startMessageWorker } from './workers/messageWorker';
 import { startFollowUpWorker } from './workers/followUpWorker';
+import { startReconciliadorWorker } from './workers/reconciliadorWorker';
 import { boss, barrerPendientes } from './queue';
 import { db } from './db/client';
 import { SCHEMA_SQL } from './db/schema';
@@ -99,6 +100,10 @@ async function main() {
   console.log('[queue] pg-boss started');
 
   await startMessageWorker(config.behavior.worker_concurrency);
+
+  // El barrido de mensajes que GHL no avisó (E144). No es opcional: el defecto
+  // es de GHL, no de este restaurante. Ver workers/reconciliadorWorker.ts.
+  await startReconciliadorWorker();
 
   // El worker de follow-ups solo arranca si hay bloque follow_ups: en el yaml.
   if (config.follow_ups) {

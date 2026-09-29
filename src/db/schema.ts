@@ -22,6 +22,20 @@ CREATE INDEX IF NOT EXISTS idx_conversations_last_activity ON conversations(last
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_bot_message_at TIMESTAMPTZ;
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS follow_ups_sent INT NOT NULL DEFAULT 0;
 
+-- Qué mensajes de GHL ya entraron a la conversación, por su id real (E144).
+-- Es lo que deja que el webhook, el inicio del turno y el barrido de cada
+-- minuto pregunten a GHL sin pisarse. Si esta tabla se queda VACÍA con tráfico,
+-- la deduplicación está apagada (E145): hay que contar sus filas, no leer logs.
+CREATE TABLE IF NOT EXISTS mensajes_incorporados (
+  message_id TEXT PRIMARY KEY,
+  contact_id TEXT NOT NULL,
+  recibido_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_mensajes_incorporados_recibido
+  ON mensajes_incorporados(recibido_at);
+-- La ventana de incorporación es de 10 minutos: una semana sobra.
+DELETE FROM mensajes_incorporados WHERE recibido_at < now() - INTERVAL '7 days';
+
 -- Lista negra + loop-guard (ver src/blocklist.ts y src/loop-guard.ts).
 -- blocked_at != NULL  → el bot ignora por completo a este contacto.
 -- turn_count          → turnos de la ráfaga actual (se reinicia tras una pausa larga).

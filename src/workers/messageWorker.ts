@@ -37,6 +37,7 @@ import {
 import { fechaGhlAMs, inicioDelDiaMs } from '../fechas';
 import { mensajesDePersona, nuevosParaHistorial } from '../services/atencion-humana';
 import { transcribirAudio } from '../services/whisper';
+import { incorporarInboundNuevos } from '../services/inbound';
 import { db } from '../db/client';
 import { getConfig } from '../config';
 import { dentroDeHorario, fechaLocalDelSlot } from '../services/horario';
@@ -1704,6 +1705,28 @@ export async function startMessageWorker(concurrency = 5) {
       }
 
       console.log(`[worker] Processing | contact=${contactId} channel=${channel ?? 'unknown'}`);
+
+      // 0.5. Última pasada por GHL antes de armar el turno (E144).
+      //
+      // El webhook recupera la ráfaga que GHL no avisó, pero solo lo que
+      // existía cuando ESE webhook entró. Si la paciente siguió escribiendo
+      // durante el debounce, preguntar aquí es lo que hace que el modelo vea
+      // el mensaje COMPLETO en un solo turno, en vez de contestar a medias.
+      // Va antes del claim: lo que se incorpore entra al pending y el claim de
+      // abajo se lo lleva junto con el resto.
+      try {
+        const rec = await incorporarInboundNuevos(contactId, { phone, contactName, channel });
+        if (rec.incorporados.length > 0) {
+          console.warn(
+            `[worker] ${rec.incorporados.length} mensaje(s) que el webhook no entregó, ` +
+              `recuperados antes del turno | contact=${contactId}`
+          );
+        }
+      } catch (e) {
+        // GHL no contesta: se sigue con lo que ya hay. Contestar con parte del
+        // mensaje es malo, no contestar es peor; el barrido recupera el resto.
+        console.warn(`[worker] no se pudo reconciliar con GHL antes del turno: ${(e as Error).message}`);
+      }
 
       // 1. Claim atómico del mensaje pendiente — previene race condition
       // entre reintentos. Usa CTE para capturar el valor antes de limpiarlo.

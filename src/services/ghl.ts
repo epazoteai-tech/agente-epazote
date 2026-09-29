@@ -92,9 +92,21 @@ export interface LatestAttachment {
   ext: string;
 }
 
+/** Un mensaje entrante tal como lo tiene GHL (la fuente de verdad, E144). */
+export interface MensajeInbound {
+  id: string;
+  body: string;
+  /** ISO 8601 tal como lo da GHL. */
+  dateAdded: string;
+  attachment: LatestAttachment | null;
+  channel: GhlChannel;
+}
+
 export interface LatestMessageInfo {
   channel: GhlChannel;
   attachment: LatestAttachment | null;
+  /** Los entrantes recientes, en orden cronológico (viejo → nuevo). */
+  inbound: MensajeInbound[];
 }
 
 /**
@@ -147,6 +159,7 @@ function attachmentFromUrl(url: string): LatestAttachment {
 
 /** Mensaje tal como lo devuelve la Conversations API (solo lo que usamos). */
 export interface GhlMessage {
+  id?: string;
   messageType?: string;
   direction?: string;
   body?: string;
@@ -202,11 +215,104 @@ export async function getLatestMessageInfo(
     const url = target.attachments?.[0];
     const attachment = typeof url === 'string' && url ? attachmentFromUrl(url) : null;
 
-    return { channel, attachment };
+    // La lista completa de entrantes sale de la MISMA respuesta que ya se
+    // descargaba en cada webhook: no cuesta ni una llamada más. Antes se tiraba
+    // todo menos el canal y el adjunto del último, y ahí venían los mensajes que
+    // el webhook no entregó (E144, ver services/inbound.ts).
+    const inbound: MensajeInbound[] = list
+      .filter(
+        (m) =>
+          m.direction === 'inbound' &&
+          typeof m.id === 'string' &&
+          m.id &&
+          typeof m.messageType === 'string' &&
+          !m.messageType.startsWith('TYPE_ACTIVITY')
+      )
+      .map((m) => {
+        const u = m.attachments?.[0];
+        return {
+          id: m.id as string,
+          body: (m.body ?? '').trim(),
+          dateAdded: m.dateAdded ?? '',
+          attachment: typeof u === 'string' && u ? attachmentFromUrl(u) : null,
+          channel: mapInboundTypeToChannel(m.messageType),
+        };
+      })
+      .sort((a, b) => a.dateAdded.localeCompare(b.dateAdded));
+
+    return { channel, attachment, inbound };
   } catch (err) {
+    // RELANZA: `null` significa "pregunté y no había conversación". Un fallo de
+    // red devuelto como null se leería como "no hay nada nuevo" — que es
+    // justo la mentira que deja mensajes de la paciente sin contestar.
     console.warn('[GHL] getLatestMessageInfo failed:', (err as Error).message);
-    return null;
+    throw err;
   }
+}
+
+/** Fila de `/conversations/search` en lo que al barrido le importa. */
+export interface FilaDeConversacion {
+  contactId?: string;
+  phone?: string;
+  contactName?: string;
+  fullName?: string;
+  lastMessageDate?: number;
+  lastMessageDirection?: string;
+  lastInboundWhatsappMessageDate?: number;
+}
+
+/**
+ * Contactos cuyo último mensaje ENTRANTE es más nuevo que `desdeMs`. Es el
+ * insumo del barrido (`workers/reconciliadorWorker.ts`): si GHL no manda
+ * NINGÚN webhook de una ráfaga, del lado del bot no se dispara nada — esto
+ * pregunta al revés, quién escribió hace poco.
+ */
+export async function conversacionesConInboundReciente(
+  desdeMs: number,
+  limite = 25
+): Promise<Array<{ contactId: string; phone: string | null; nombre: string | null; ultimoInbound: number }>> {
+  const locationId = process.env.GHL_LOCATION_ID;
+  if (!locationId) throw new Error('GHL_LOCATION_ID no configurado');
+  const res = (await ghlFetch(
+    `/conversations/search?locationId=${encodeURIComponent(locationId)}` +
+      `&sort=desc&sortBy=last_message_date&limit=${limite}`
+  )) as { conversations?: FilaDeConversacion[] };
+  return filtrarPorInboundReciente(res.conversations ?? [], desdeMs);
+}
+
+/**
+ * El filtro del barrido, puro para poder probarlo. Asume la lista ordenada de
+ * más reciente a más vieja (sortBy=last_message_date&sort=desc).
+ *
+ * `lastInboundWhatsappMessageDate` es la fecha que importa y NO
+ * `lastMessageDate`: si el bot contestó DESPUÉS de que se perdiera un mensaje,
+ * el último de la conversación es saliente y `lastMessageDate` no delata nada.
+ */
+export function filtrarPorInboundReciente(
+  conversations: FilaDeConversacion[],
+  desdeMs: number
+): Array<{ contactId: string; phone: string | null; nombre: string | null; ultimoInbound: number }> {
+  const out: Array<{ contactId: string; phone: string | null; nombre: string | null; ultimoInbound: number }> = [];
+  for (const c of conversations) {
+    // Si el mensaje MÁS reciente de esta fila ya quedó fuera, todo lo que
+    // sigue es más viejo todavía.
+    if (typeof c.lastMessageDate === 'number' && c.lastMessageDate < desdeMs) break;
+    if (!c.contactId) continue;
+    const ultimoInbound =
+      typeof c.lastInboundWhatsappMessageDate === 'number'
+        ? c.lastInboundWhatsappMessageDate
+        : c.lastMessageDirection === 'inbound' && typeof c.lastMessageDate === 'number'
+          ? c.lastMessageDate
+          : 0;
+    if (ultimoInbound < desdeMs) continue;
+    out.push({
+      contactId: c.contactId,
+      phone: c.phone ?? null,
+      nombre: c.contactName ?? c.fullName ?? null,
+      ultimoInbound,
+    });
+  }
+  return out;
 }
 
 /**

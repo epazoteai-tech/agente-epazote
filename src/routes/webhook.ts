@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { enqueueMessage } from '../queue';
 import { db } from '../db/client';
 import { GHLWebhookPayload, GhlChannel } from '../types';
-import { getLatestMessageInfo } from '../services/ghl';
+import { incorporarInboundNuevos } from '../services/inbound';
 import { contactoBloqueado, bloquearContacto } from '../blocklist';
 import { evaluarLoop, EstadoContacto } from '../loop-guard';
 import { cancelarFollowUpsPendientes } from '../services/follow-up';
@@ -94,74 +94,87 @@ function makeGhlWebhookHandler(channel: GhlChannel) {
         return;
       }
 
-      // GHL no manda la URL del adjunto en el webhook — hay que pedirla a la
-      // conversations API. OJO: un mensaje de WhatsApp puede traer TEXTO Y
-      // media juntos (ej. una foto con un comentario) — por eso esto se
-      // consulta SIEMPRE, no solo cuando message.body viene vacío. Antes solo
-      // se checaba si el body venía vacío, así que cualquier imagen/audio
-      // mandado junto con texto se ignoraba por completo (bug encontrado
-      // 2026-08-12 con un caso real: contacto mandó una foto con la frase
-      // "conseguí el dinero pero en efectivo" y la foto nunca se procesó).
-      let attachmentUrl: string | null = null;
-      let attachmentKind: string | null = null;
-      let textForClaude = messageText;
+      // El texto NO sale del payload: sale de la API de GHL (E144).
+      //
+      // GHL no dispara el webhook de todos los mensajes. Medido en Viking Food:
+      // 1 de cada 5 se perdía, y todos los perdidos llegaron dentro de 6
+      // segundos del anterior — justo lo que alguien escribe después de "hola"
+      // ("hola" + "mesa para 4 mañana a las 9"). Así que el webhook pasa a ser
+      // el timbre: solo dice "pasó algo con este contacto", y qué pasó se le
+      // pregunta a GHL (`services/inbound.ts`), que además trae el adjunto de
+      // CADA mensaje, no solo del último (E23).
+      //
+      // Los contadores del loop-guard se guardan aparte (antes iban en el mismo
+      // upsert del pendiente): cuentan este webhook aunque el texto ya lo haya
+      // incorporado otra puerta.
+      const guardarGuard = () =>
+        db
+          .query(
+            `UPDATE conversations SET turn_count = $2, fast_replies = $3, fast_reply_marker = $4 WHERE contact_id = $1`,
+            [contactId, guard.turnCount, guard.fastReplies, guard.fastReplyMarker]
+          )
+          .catch((e) => console.warn(`[webhook:${channel}] no se guardó el loop-guard: ${(e as Error).message}`));
 
-      const info = await getLatestMessageInfo(contactId);
-      const att = info?.attachment;
-      if (att) {
-        attachmentUrl = att.url;
-        attachmentKind = att.kind;
-        console.log(`[webhook:${channel}] Media detectada | contact=${contactId} kind=${att.kind} ext=${att.ext}`);
-
-        const placeholder =
-          att.kind === 'image' ? '[el contacto envió una imagen]'
-          : att.kind === 'pdf' ? '[el contacto envió un PDF]'
-          : att.kind === 'audio' ? '[el contacto envió un audio]'
-          : '[el contacto envió un archivo]';
-        textForClaude = textForClaude ? `${textForClaude}\n${placeholder}` : placeholder;
+      let textForClaude: string;
+      let conMedia = false;
+      try {
+        const inc = await incorporarInboundNuevos(contactId, { phone, contactName, channel });
+        await guardarGuard();
+        if (inc.incorporados.length === 0) {
+          // Ya estaban incorporados (otro webhook de la misma ráfaga, el inicio
+          // del turno o el barrido). Encolar otra vez solo daría un turno vacío.
+          console.log(`[webhook:${channel}] Skipped — nada nuevo que incorporar | contact=${contactId}`);
+          return;
+        }
+        textForClaude = inc.texto;
+        conMedia = inc.incorporados.some((m) => m.attachment);
+        if (inc.incorporados.length > 1) {
+          console.log(
+            `[webhook:${channel}] Recuperados ${inc.incorporados.length} mensajes de GHL ` +
+              `(el webhook avisó de 1) | contact=${contactId}`
+          );
+        }
+      } catch (e) {
+        // GHL no contesta. Si el payload trae texto, se usa ese: perder un
+        // mensaje es peor que arriesgar un duplicado, y el duplicado está
+        // acotado — el barrido lo descarta por texto IDÉNTICO contra la marca
+        // `textos_sin_id` que se deja aquí (descartarYaConocidos, E161).
+        // Si no trae texto (una foto sola, un audio), no hay nada que procesar
+        // todavía: el barrido la recupera en cuanto GHL vuelva a contestar.
+        if (!messageText) throw e;
+        console.warn(
+          `[webhook:${channel}] GHL no contestó (${(e as Error).message}); se usa el texto del payload ` +
+            `SIN deduplicar | contact=${contactId}`
+        );
+        textForClaude = messageText;
+        await db.query(
+          `INSERT INTO conversations (contact_id, phone, contact_name, messages, metadata, pending_message, pending_at)
+           VALUES ($1, $2, $3, '[]'::jsonb,
+                   jsonb_build_object('channel', $5::text, 'textos_sin_id',
+                     jsonb_build_array(jsonb_build_object('texto', $4::text, 'at', now()))),
+                   $4, now())
+           ON CONFLICT (contact_id)
+           DO UPDATE SET
+             pending_message = CASE
+               WHEN conversations.pending_message IS NULL OR conversations.pending_message = ''
+                 THEN $4
+               ELSE conversations.pending_message || E'\\n' || $4
+             END,
+             metadata = COALESCE(conversations.metadata, '{}'::jsonb)
+                        || jsonb_build_object('channel', $5::text)
+                        || jsonb_build_object('textos_sin_id',
+                             COALESCE(conversations.metadata->'textos_sin_id', '[]'::jsonb)
+                             || jsonb_build_array(jsonb_build_object('texto', $4::text, 'at', now()))),
+             pending_at = now(),
+             last_activity = now()`,
+          [contactId, phone, contactName, textForClaude, channel]
+        );
+        await guardarGuard();
       }
-
-      if (!textForClaude) {
-        console.log(`[webhook:${channel}] Skipped — sin texto ni attachment | contact=${contactId}`);
-        return;
-      }
-
-      // Upsert con concatenación del pending_message + append a pending_attachments.
-      // Persistimos el canal en metadata.channel para auditoría y para que el
-      // worker de follow-ups sepa por dónde responder.
-      await db.query(
-        `INSERT INTO conversations (contact_id, phone, contact_name, messages, metadata, pending_message, pending_at, pending_attachments, turn_count, fast_replies, fast_reply_marker)
-         VALUES ($1, $2, $3, '[]'::jsonb, jsonb_build_object('channel', $6::text), $4, now(), COALESCE($5::jsonb, '[]'::jsonb), $7, $8, $9)
-         ON CONFLICT (contact_id)
-         DO UPDATE SET
-           turn_count = $7,
-           fast_replies = $8,
-           fast_reply_marker = $9,
-           pending_message = CASE
-             WHEN conversations.pending_message IS NULL OR conversations.pending_message = ''
-               THEN $4
-             ELSE conversations.pending_message || E'\n' || $4
-           END,
-           pending_attachments = COALESCE(conversations.pending_attachments, '[]'::jsonb) || COALESCE($5::jsonb, '[]'::jsonb),
-           metadata = COALESCE(conversations.metadata, '{}'::jsonb) || jsonb_build_object('channel', $6::text),
-           pending_at = now(),
-           last_activity = now()`,
-        [
-          contactId,
-          phone,
-          contactName,
-          textForClaude,
-          attachmentUrl ? JSON.stringify([{ url: attachmentUrl, kind: attachmentKind }]) : null,
-          channel,
-          guard.turnCount,
-          guard.fastReplies,
-          guard.fastReplyMarker,
-        ]
-      );
 
       await enqueueMessage({ contactId, phone, contactName, message: textForClaude, channel });
 
-      console.log(`[webhook:${channel}] Queued | contact=${contactId} msg="${textForClaude.slice(0, 50)}"${attachmentUrl ? ' (con media)' : ''}`);
+      console.log(`[webhook:${channel}] Queued | contact=${contactId} msg="${textForClaude.slice(0, 50)}"${conMedia ? ' (con media)' : ''}`);
     } catch (err) {
       console.error(`[webhook:${channel}] Error processing:`, (err as Error).message);
       next(err);

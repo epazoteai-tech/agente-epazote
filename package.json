@@ -16,7 +16,8 @@
     "test:agendar": "npm run build && node -r dotenv/config pruebas/agendar.js",
     "test:guards": "TZ=UTC node pruebas/guards.js",
     "test:reservas": "npm run build && TZ=UTC node pruebas/reservas.js",
-    "test": "npm run build && npm run test:guards && npm run test:razonamiento && npm run test:cancelar && TZ=UTC node pruebas/horario.js && TZ=UTC node pruebas/reservas.js"
+    "test:inbound": "npm run build && node pruebas/inbound-perdidos.js",
+    "test": "npm run build && npm run test:guards && npm run test:razonamiento && npm run test:cancelar && TZ=UTC node pruebas/horario.js && TZ=UTC node pruebas/reservas.js && TZ=UTC node pruebas/inbound-perdidos.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",

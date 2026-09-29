@@ -26,19 +26,17 @@ el equipo").
 
 ## Datos del negocio por confirmar (Jorge / Gustavo)
 
-| # | Dato | Dónde se cambia | Qué hace el bot mientras tanto |
-|---|------|-----------------|--------------------------------|
-| 1 | Horarios vigentes (L-J 8-23, V-S 8-24, D 8-20) | `bot.config.yaml` → `business.description` y `reservations.horario`, y `<business_knowledge>` | Usa esos |
-| 2 | A qué hora termina el menú de desayunos (propuesta: 1 pm; Jorge lo pregunta) | `reservations.turnos` | Solo afecta la etiqueta del resumen |
-| 4 | ¿En qué horario confirma Mony las reservas y quién la cubre de noche? | Workflow de GHL + `<flujo_de_cierre>` | De noche dice "en cuanto el equipo esté de vuelta" |
-| 5 | Menú digital (link o PDF) | `<business_knowledge>` | Dice que no lo tiene a la mano |
-| 6 | Rangos de precio que el bot puede decir | `<business_knowledge>` + objeción "se ve caro" | No da cifras |
-| 7 | Facturación | `<business_knowledge>` | Lo anota o escala |
-| 8 | Menú en inglés | `<business_knowledge>` | Lo anota |
-| 9 | Mascotas y terraza | `<business_knowledge>` | Lo anota |
-| 10 | Métodos de pago | `<business_knowledge>` | Lo anota |
-| 11 | Acceso y estacionamiento en Parque Centro | `<business_knowledge>` | Solo da la dirección |
-| 12 | Objeciones que de verdad escuchan (validar las 4 de la estrategia y ampliar) | `<manejo_de_objeciones>` | Usa las 4 de la estrategia |
+| # | Dato | Estado | Qué hace el bot mientras tanto |
+|---|------|--------|--------------------------------|
+| 1 | Horarios (L-J 8-23, V-S 8-24, D 8-20) | ✅ Confirmado por Gustavo 29/09 | Los usa |
+| 2 | Fin del menú de desayunos | ✅ 2:00 pm (turnos del yaml y descripción) | |
+| 3 | Formas de pago | ✅ Efectivo, tarjeta y transferencia (en el prompt) | Lo dice |
+| 4 | Objeción más común | ✅ "A veces no contestan el teléfono" (guion nuevo en `<manejo_de_objeciones>`) | Ofrece el chat como el camino que sí contesta |
+| 5 | Quién recibe el aviso de reservas del bot | ✅ **Mony** (decisión de Jorge 29/09; Gustavo confirma las de redes, pero el aviso va a Mony) | |
+| 6 | Menú digital y rangos de precio | ⏳ Gustavo lo manda "en un ratito" | No da cifras |
+| 7 | Estacionamiento / acceso a Parque Centro | ⏳ "No todavía" | Solo da la dirección |
+| 8 | Facturación | ⏳ Sin respuesta | Lo anota o escala |
+| 9 | Mascotas, terraza, menú en inglés | ⏳ Sin respuesta | Lo anota |
 
 ## Setup en GHL (subcuenta Epazote)
 

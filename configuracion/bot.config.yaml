@@ -35,7 +35,10 @@ business:
     a 12:00 am (medianoche), domingo de 8:00 am a 8:00 pm.
 
     Dos momentos: desayunos de cocina tradicional de origen, y comidas y cenas
-    de cocina mexicana contemporánea (menú nuevo).
+    de cocina mexicana contemporánea (menú nuevo). El menú de desayunos se sirve
+    hasta las 2:00 pm; de ahí en adelante, comidas y cenas.
+
+    Formas de pago: efectivo, tarjeta y transferencia.
 
 objetivo:
   meta: "cuántas conversaciones terminan con una solicitud de reserva registrada (nombre, fecha, hora y número de personas) para que el equipo la confirme"
@@ -120,7 +123,7 @@ reservations:
   grupo_grande_desde: 8
   # Confirmado por Jorge 25/09/2026: reservas hasta una hora antes del cierre.
   ultima_reserva_antes_de_cierre_min: 60
-  # PENDIENTE: verificar vigencia de horarios con Jorge. "24:00" = medianoche.
+  # Confirmado por Gustavo 29/09/2026. "24:00" = medianoche.
   # ⚠️ Si cambia, cámbialo TAMBIÉN en business.description (es lo que el bot le
   # dice al cliente; esto es lo que el código valida). El prompt ya no lo repite.
   horario:
@@ -131,11 +134,11 @@ reservations:
     viernes: ["08:00-24:00"]
     sabado: ["08:00-24:00"]
     domingo: ["08:00-20:00"]
-  # PENDIENTE (Jorge lo pregunta): ¿a qué hora termina el menú de desayunos?
-  # Propuesta: 1:00 pm. Solo cambia la etiqueta del turno en el resumen.
+  # El menú de desayunos termina a las 2:00 pm (Gustavo, 29/09/2026). Si cambia,
+  # cámbialo también en business.description.
   turnos:
-    - { nombre: desayuno, desde: "08:00", hasta: "13:00" }
-    - { nombre: comida, desde: "13:00", hasta: "18:00" }
+    - { nombre: desayuno, desde: "08:00", hasta: "14:00" }
+    - { nombre: comida, desde: "14:00", hasta: "18:00" }
     - { nombre: cena, desde: "18:00", hasta: "24:00" }
   stage: Reserva registrada
   fields:

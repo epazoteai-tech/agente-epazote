@@ -21,8 +21,8 @@ const CFG = {
     viernes: ['08:00-24:00'], sabado: ['08:00-24:00'], domingo: ['08:00-20:00'],
   },
   turnos: [
-    { nombre: 'desayuno', desde: '08:00', hasta: '13:00' },
-    { nombre: 'comida', desde: '13:00', hasta: '18:00' },
+    { nombre: 'desayuno', desde: '08:00', hasta: '14:00' },
+    { nombre: 'comida', desde: '14:00', hasta: '18:00' },
     { nombre: 'cena', desde: '18:00', hasta: '24:00' },
   ],
   fields: {},

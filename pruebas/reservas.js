@@ -9,7 +9,7 @@
  * inferido por la hora y el formato del resumen de la notificación.
  */
 const path = require('path');
-const { validarReserva, mensajeDeOrigen } = require(path.join(__dirname, '..', 'dist', 'services', 'reservas.js'));
+const { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro } = require(path.join(__dirname, '..', 'dist', 'services', 'reservas.js'));
 
 const CFG = {
   timezone: 'America/Monterrey',
@@ -82,6 +82,34 @@ for (const [hist, esperado, desc] of origenes) {
   const ok = o === esperado;
   if (!ok) fallas++;
   console.log(`${ok ? '✅' : '❌'} origen: ${desc} → "${o}"`);
+}
+
+// Red contra confirmar la mesa: [texto, texto esperado a la salida]
+const R = 'Eso te lo confirma el equipo en un momento por aquí mismo.';
+const confirmaciones = [
+  // NO tocar: el guion de cierre, preguntas y respuestas honestas
+  ['Listo, Juan, ya registré tu solicitud: *mesa para 4 el sábado a las 9:00 pm*. En un momento el equipo te confirma por aquí mismo 🙌', null],
+  ['A qué hora los esperamos, temprano tipo 8:30 o más tarde?', null],
+  ['Eso te lo confirma el equipo en un momento por aquí, ellos ven la disponibilidad en tiempo real 😊', null],
+  ['Puedes llegar sin reserva, con gusto te recibimos. La reserva nada más te asegura la mesa.', null],
+  ['Tenemos actividades para niños los fines de semana, pinta caritas y juegos.', null],
+  ['Qué gusto, que lo disfruten mucho! 😊', null],
+  // SÍ quitar
+  ['Listo! Tu mesa está confirmada para el sábado a las 9 ✅ Te esperamos.', `Listo! ${R}`],
+  ['Sí hay lugar el sábado a las 9, a nombre de quién la registro?', `${R} A nombre de quién la registro?`],
+  ['Perfecto, las 2:00 pm está disponible. Celebran algo?', `${R} Celebran algo?`],
+  ['Claro! Tenemos mesa el domingo. Para cuántas personas?', `Claro! ${R} Para cuántas personas?`],
+];
+for (const [t, esperado] of confirmaciones) {
+  const o = quitarConfirmacionDeMesa(t).text;
+  const ok = o === (esperado ?? t);
+  if (!ok) fallas++;
+  console.log(`${ok ? '✅' : '❌'} confirmación: "${t.slice(0, 45)}…" → "${o}"`);
+}
+for (const [t, esperado] of [['Listo, ya registré tu solicitud', true], ['Tu solicitud quedó registrada', true], ['Te registro la reserva a nombre de Juan?', false]]) {
+  const ok = diceQueRegistro(t) === esperado;
+  if (!ok) fallas++;
+  console.log(`${ok ? '✅' : '❌'} dice que registró: "${t}" → ${diceQueRegistro(t)}`);
 }
 
 console.log(fallas ? `\n${fallas} FALLA(S)` : '\nTodo bien');

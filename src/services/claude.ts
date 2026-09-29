@@ -1065,7 +1065,10 @@ export function asegurarDatosBancarios(text: string): string {
  */
 const HANDOFF = new RegExp(
   [
-    'ya (le |te )?(avis[eé]|notifiqu[eé]|coment[eé]) (al|a la|a una|con el|a alguien)',
+    'ya (le |te |les )?(avis[eé]|notifiqu[eé]|coment[eé]) (al|a la|a una|con el|a alguien)',
+    // En plural ("ya les avisé") no trae complemento: el sujeto es el equipo.
+    'ya les (avis[eé]|notifiqu[eé]|pas[eé])',
+    'una persona (del equipo )?(te|le) (escribe|contacta|atiende|llama)',
     'ya (le |te )?pas[eé] (tu|su) (mensaje|caso|comprobante|informaci[oó]n)',
     '(le|te) (aviso|notifico|paso) (al equipo|a una persona|al doctor)',
     'en (breve|un momento|un rato|seguida) (te|le|la|lo) (contacta|escribe|atiende|confirma|llama)',

@@ -194,6 +194,80 @@ export function validarReserva(
   return { ok: true, turno, horaLegible: hl, fechaLegible, resumen };
 }
 
+// ─── Redes sobre el texto que sale ────────────────────────────────────────────
+// La regla central del bot ("nunca confirmes una mesa") vive en el prompt, en
+// rules.do_not y en el tool_result. Aun así es una regla que el modelo puede
+// saltarse una de cada tantas veces, y cuando pasa el cliente llega a un
+// restaurante lleno creyendo que tiene mesa. Lo que se puede escribir como
+// regex no se le deja al modelo (E128/E152 de errores-bot).
+
+// Afirmaciones de disponibilidad: se quitan aunque vayan dentro de una pregunta
+// ("Sí hay lugar el sábado, a nombre de quién?" promete igual).
+const CONFIRMA_MESA = new RegExp(
+  [
+    '(tu|su) (mesa|reserva(ci[oó]n)?) (ya )?(est[aá]|qued[oó]|queda) (confirmad|apartad|asegurad|lista|reservad)',
+    '(mesa|reserva(ci[oó]n)?) confirmada',
+    'ya (tienes|tienen|tiene) (tu |su )?(mesa|lugar)',
+    's[ií] hay (lugar|mesa|disponibilidad|espacio)',
+    'tenemos (lugar|mesa|disponibilidad|espacio)',
+    '(est[aá]|queda) (disponible|libre)',
+  ].join('|'),
+  'i'
+);
+// "Te esperamos" suena a confirmación en una afirmación, no en una pregunta
+// ("A qué hora los esperamos?" no promete nada).
+const TE_ESPERAMOS = /\b(te|los|las|les) esperamos\b/i;
+
+const RESPALDO_CONFIRMACION = 'Eso te lo confirma el equipo en un momento por aquí mismo.';
+
+const EMOJI = '[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]';
+const ORACION = new RegExp(`[^.!?\\n]+[.!?]*(\\s*${EMOJI}+)?`, 'gu');
+const ES_PREGUNTA = new RegExp(`\\?\\s*${EMOJI}*\\s*$`, 'u');
+
+/**
+ * Quita las oraciones que confirman una mesa o dicen que hay lugar, y pone en
+ * su lugar la frase que sí es verdad. Trabaja por oración para conservar el
+ * resto del mensaje (el resumen de la reserva, la respuesta a lo que preguntó).
+ * Si la confirmación va pegada a una pregunta por coma ("Sí hay lugar, a nombre
+ * de quién?"), se quita solo la parte que confirma y la pregunta se conserva.
+ */
+export function quitarConfirmacionDeMesa(text: string): { text: string; quitadas: string[] } {
+  const quitadas: string[] = [];
+  let puesto = false;
+  const respaldo = () => {
+    if (puesto) return '';
+    puesto = true;
+    return RESPALDO_CONFIRMACION;
+  };
+  const salida = text.replace(ORACION, (oracion) => {
+    const limpia = oracion.trim();
+    if (!limpia) return oracion;
+    const espacio = oracion.match(/^\s*/)?.[0] ?? '';
+    const pregunta = ES_PREGUNTA.test(limpia);
+    const fuerte = CONFIRMA_MESA.exec(limpia);
+
+    if (!fuerte && !(TE_ESPERAMOS.test(limpia) && !pregunta)) return oracion;
+    quitadas.push(limpia);
+
+    if (fuerte && pregunta) {
+      const coma = limpia.lastIndexOf(',');
+      if (coma > fuerte.index) {
+        const resto = limpia.slice(coma + 1).trim();
+        const r = respaldo();
+        return espacio + (r ? `${r} ` : '') + resto.charAt(0).toUpperCase() + resto.slice(1);
+      }
+    }
+    const r = respaldo();
+    return r ? espacio + r : '';
+  });
+  return { text: salida.replace(/[ \t]{2,}/g, ' ').trim(), quitadas };
+}
+
+/** El texto dice que la solicitud quedó registrada (para cruzarlo con la tool). */
+export function diceQueRegistro(text: string): boolean {
+  return /registr[eé] (tu|su) (solicitud|reserva|cambio)|(solicitud|reserva) (ya )?(qued[oó]|est[aá]) registrad/i.test(text);
+}
+
 /**
  * Mensaje con el que el contacto ABRIÓ la sesión actual: el primero suyo
  * después de 24h o más sin actividad. Es el que trae el texto precargado del
@@ -206,7 +280,9 @@ export function validarReserva(
  */
 export function mensajeDeOrigen(
   history: { role: string; content: string; ts: string }[],
-  gapMs: number = 24 * 60 * 60 * 1000
+  // El mismo hueco que usa sesionActual (services/claude.ts, 48 h) para decidir
+  // qué historial ve el modelo: dos definiciones de "sesión" terminan desfasadas.
+  gapMs: number = 48 * 60 * 60 * 1000
 ): string {
   let origen = '';
   let anterior = NaN;

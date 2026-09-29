@@ -47,7 +47,7 @@ import {
 } from '../services/follow-up';
 import { contactoBloqueadoAsync } from '../blocklist';
 import { pareceNombreReal } from '../nombres';
-import { validarReserva, mensajeDeOrigen } from '../services/reservas';
+import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro } from '../services/reservas';
 
 /**
  * Estado compartido entre las tools de UN mismo turno (un job del worker).
@@ -1431,6 +1431,23 @@ async function handleRegistrarReserva(
     return JSON.stringify({ error: v.error, message: v.message });
   }
 
+  // La misma solicitud dos veces (el modelo repite la tool, el job se
+  // reintenta) no vuelve a notificar al equipo: dos avisos de una sola reserva
+  // hacen que Mony confirme dos mesas (E60 de errores-bot). Un cambio real trae
+  // otro resumen y sí pasa.
+  const meta = await getMeta(contactId);
+  const previaAt = Date.parse(String(meta.reserva_registrada_at ?? ''));
+  if (meta.reserva_resumen === v.resumen && !isNaN(previaAt) && Date.now() - previaAt < 30 * 60 * 1000) {
+    turn.reservaRegistrada = true;
+    console.log(`[tool:registrar_reserva] ya estaba registrada, no se repite | contact=${contactId}`);
+    return JSON.stringify({
+      ok: true,
+      ya_estaba_registrada: true,
+      resumen: v.resumen,
+      aviso_importante: 'Esta solicitud YA estaba registrada y el equipo ya tiene el aviso. No la confirmes: el equipo le confirma por aquí.',
+    });
+  }
+
   const nombre = solicitud.nombre.trim().replace(/\s+/g, ' ');
   let telefono = '';
   try {
@@ -1497,7 +1514,7 @@ async function handleRegistrarReserva(
       registrada_at: new Date().toISOString(),
     }).catch((err) => console.error(`[mesa-control] POST falló | contact=${contactId}: ${(err as Error).message}`));
   }
-  await setMeta(contactId, { reserva_registrada_at: new Date().toISOString(), declino_at: null });
+  await setMeta(contactId, { reserva_registrada_at: new Date().toISOString(), reserva_resumen: v.resumen, declino_at: null });
   cancelarFollowUpsPendientes(contactId).catch(() => {});
   turn.reservaRegistrada = true;
 
@@ -1902,6 +1919,32 @@ export async function startMessageWorker(concurrency = 5) {
             contactId,
             turn
           ).catch(() => {});
+        }
+      }
+
+      // 3.6 Reservas sin calendario: la regla central ("nunca confirmes una
+      // mesa") se cumple en código además del prompt, y un "ya registré tu
+      // solicitud" sin registro detrás se escala para que una persona la tome
+      // (misma forma que E66/E143 de errores-bot).
+      if (getConfig().reservations) {
+        const q = quitarConfirmacionDeMesa(replyText);
+        if (q.quitadas.length) {
+          console.warn(`[reservas] se quitó una confirmación de mesa | contact=${contactId} quitado=${JSON.stringify(q.quitadas)}`);
+          replyText = q.text;
+        }
+        if (!turn.reservaRegistrada && !turn.escalado && diceQueRegistro(replyText)) {
+          const at = Date.parse(String((await getMeta(contactId)).reserva_registrada_at ?? ''));
+          if (isNaN(at) || Date.now() - at > 30 * 60 * 1000) {
+            console.warn(`[reservas] dijo que registró sin registrar — se escala en código | contact=${contactId}`);
+            await handleEscalarAHumano(
+              {
+                motivo_escalacion:
+                  'El bot le dijo al contacto que registró su solicitud de reserva, pero no quedó registrada. Tomar los datos de la conversación y confirmarle a mano.',
+              },
+              contactId,
+              turn
+            ).catch(() => {});
+          }
         }
       }
 

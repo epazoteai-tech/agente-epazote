@@ -121,6 +121,8 @@ reservations:
   # Confirmado por Jorge 25/09/2026: reservas hasta una hora antes del cierre.
   ultima_reserva_antes_de_cierre_min: 60
   # PENDIENTE: verificar vigencia de horarios con Jorge. "24:00" = medianoche.
+  # ⚠️ Si cambia, cámbialo TAMBIÉN en business.description (es lo que el bot le
+  # dice al cliente; esto es lo que el código valida). El prompt ya no lo repite.
   horario:
     lunes: ["08:00-23:00"]
     martes: ["08:00-23:00"]

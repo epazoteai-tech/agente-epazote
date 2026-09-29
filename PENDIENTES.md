@@ -18,6 +18,12 @@ el equipo").
 - Mony tiene usuario en GHL: la notificación va como Internal Notification a su usuario.
 - El bot guarda el origen de campaña (`reserva_origen`) y puede avisar a la Mesa de Control (`reservations.mesa_control_url`, apagado hasta que exista el endpoint).
 
+## 🚨 Bloqueantes técnicos (auditoría errores-bot, 29/09/2026)
+
+1. **La cuenta de Anthropic de Epazote NO TIENE CRÉDITO.** Es la misma llave que está en Railway: con WhatsApp conectado, el bot no le contestaría a nadie y `/health` seguiría en 200. Cargar saldo en console.anthropic.com → Plans & Billing. Después: `npm run test:modelo claude-sonnet-4-6 claude-haiku-4-5`.
+2. **E144 (ráfagas perdidas) no está en este bot.** GHL no dispara el webhook de ~20% de los mensajes que llegan pegados al anterior ("hola" + "mesa para 4 mañana a las 9"). El arreglo existe en `DRA MARIANA DELGADO/bot-dra-mariana/src/services/inbound.ts` (con las dos trampas de portarlo documentadas en E144). Portarlo antes de encender pauta.
+3. **La plantilla `bot-ghl-template` tiene trabajo sin commitear de otra sesión** (`verificar-llaves.ts`, `index.ts`). Cuando esa sesión cierre, subirle el chequeo de crédito (ver nota nueva en E156).
+
 ## Datos del negocio por confirmar (Jorge / Gustavo)
 
 | # | Dato | Dónde se cambia | Qué hace el bot mientras tanto |
@@ -36,17 +42,19 @@ el equipo").
 
 ## Setup en GHL (subcuenta Epazote)
 
-**Requisito #1: la subcuenta de Epazote existe y su WhatsApp está conectado.** Sin número conectado no hay bot.
+**Requisito #1: la subcuenta de Epazote existe y su WhatsApp está conectado.** Sin número conectado no hay bot. ⏳ Subcuenta lista; WhatsApp sin conectar (29/09/2026).
+
+Deploy: ✅ Railway `agente-epazote-production.up.railway.app`, `/health` OK con commit aa38197, webhook valida el secreto (401 sin él, 200 con él).
 
 1. ✅ PIT y Location ID en `.env` (28/09/2026).
 2. ✅ Custom fields creados por API: `reserva_fecha`, `reserva_hora`, `reserva_personas`, `reserva_ocasion`, `reserva_resumen`, `reserva_origen` (IDs ya en el yaml).
 3. ✅ Tags creados: `reserva-solicitada`, `atencion-humana`.
 4. ✅ Pipeline "Reservas" con las 6 etapas creado por API (IDs ya en el yaml).
 5. ✅ Prueba de humo con el código real contra GHL: nombre, 6 campos, tag, nota, crear y mover oportunidad, leer conversaciones. Todo OK (la búsqueda de oportunidades tarda ~2 s en indexar, sin impacto).
-6. Workflow de entrada: primer mensaje del contacto → crear opportunity en "Solicitud recibida". (Si falta, el bot crea la tarjeta él mismo al registrar la reserva, pero el follow-up de reservas a medias no puede verificar la etapa.)
-7. Workflow de webhook: "Customer Replied" (solo inbound, WhatsApp) → POST a `https://<app>.up.railway.app/webhook/ghl/whatsapp` con header `x-webhook-secret`.
-8. Workflow de notificación a **Mony**: trigger "Tag Added: reserva-solicitada" → Internal Notification a su usuario de GHL (activar notificaciones de la app móvil de GHL en su teléfono) con `{{contact.reserva_resumen}}`, `{{contact.reserva_origen}}` y el teléfono del contacto. Nunca SMS al contacto.
-9. Workflow de escalación (recomendado): trigger "Tag Added: atencion-humana" → notificación interna con la última nota del contacto.
+6. ✅ Workflow de entrada: primer mensaje del contacto → crear opportunity en "Solicitud recibida". (Si falta, el bot crea la tarjeta él mismo al registrar la reserva, pero el follow-up de reservas a medias no puede verificar la etapa.)
+7. ✅ Workflow de webhook: "Customer Replied" (solo inbound, WhatsApp) → POST a `https://agente-epazote-production.up.railway.app/webhook/ghl/whatsapp` con header `x-webhook-secret`.
+8. ✅ Workflow de notificación a **Mony**: trigger "Tag Added: reserva-solicitada" → Internal Notification a su usuario de GHL (activar notificaciones de la app móvil de GHL en su teléfono) con `{{contact.reserva_resumen}}`, `{{contact.reserva_origen}}` y el teléfono del contacto. Nunca SMS al contacto.
+9. ✅ Workflow de escalación (recomendado): trigger "Tag Added: atencion-humana" → notificación interna con la última nota del contacto.
 
 ## Pruebas antes de entregar (Paso 4 adaptado)
 
@@ -59,6 +67,20 @@ el equipo").
 - Grupo de 10 → escala, no registra.
 - Alguien del equipo contesta a mano en GHL → el bot se calla 2 horas en esa conversación.
 - `npm run test:modelo claude-sonnet-4-6 claude-haiku-4-5` con `pruebas/conversaciones.js` (~$1-3 USD). Revisar sobre todo que ningún turno confirme la mesa.
+
+## Auditoría errores-bot (29/09/2026): qué se revisó y qué se arregló
+
+Arreglado en código (con pruebas en `pruebas/reservas.js`, 93/93 en verde con `TZ=UTC`):
+- **Red contra confirmar la mesa**: antes de enviar, se quita toda oración que confirme mesa o diga que hay lugar ("tu mesa está confirmada", "sí hay lugar", "está disponible", "te esperamos") y se pone "Eso te lo confirma el equipo en un momento por aquí mismo." Conserva la pregunta que venga después. Log: `[reservas] se quitó una confirmación de mesa`.
+- **"Ya registré tu solicitud" sin registro** (forma de E143): se escala en código para que Mony tome los datos. Log: `[reservas] dijo que registró sin registrar`.
+- **Registro duplicado** (E60): la misma solicitud en menos de 30 min no vuelve a notificar a Mony.
+- **"Ya les avisé" en plural** no lo detectaba la red de E66. Ya sí.
+- **Chequeo de crédito al arrancar** (E156): `/v1/models` pasaba con saldo cero.
+- **Origen de campaña** usa el mismo hueco de sesión que el historial (48 h), no uno propio.
+- **Horario** ya no está tecleado en el prompt (E68): el prompt remite a `business.description`.
+- **Ejemplo con fecha fija** ("sábado 26 de septiembre") quitado (E16).
+
+Revisado y bien: tag de notificación repuesto (E151), presentación como asistente digital en código (E141/E107), ¿¡ quitados en código (E128), zona America/Monterrey (E13), tools vs dispatch (E149), sin llamadas a tools desde código con parámetros mal escritos (E157), cola con aviso y barredor (E150), historial por sesión (E83), bot callado 2 h cuando escribe una persona (E85/E134), follow-up con corte humano (E89), `cerrar_seguimiento` (E137), `/health` con sha (E74), token fuera de `.git/config` (E116), el filtro anti-narración deja pasar las frases literales del prompt (E131), y el guion de cierre no dispara la red de handoff.
 
 ## Contrato con la Mesa de Control
 

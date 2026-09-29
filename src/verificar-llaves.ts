@@ -59,8 +59,25 @@ async function verificarAnthropic(): Promise<Resultado> {
     headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
-  if (res.ok) return { ok: true, detalle: 'credencial válida' };
-  return { ok: false, detalle: `HTTP ${res.status} — ${(await res.text()).slice(0, 200)}` };
+  if (!res.ok) return { ok: false, detalle: `HTTP ${res.status} — ${(await res.text()).slice(0, 200)}` };
+
+  // `/v1/models` responde 200 aunque la cuenta NO TENGA CRÉDITO: la llave es
+  // válida y el bot no puede contestarle a nadie. Pasó con Epazote (29/09/2026):
+  // la batería de medición falló con "credit balance is too low" y este mismo
+  // chequeo lo habría dado por bueno. Una generación de 1 token lo prueba de
+  // verdad (una fracción de centavo por arranque).
+  const gen = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1, messages: [{ role: 'user', content: 'ok' }] }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (gen.ok) return { ok: true, detalle: 'credencial válida y con crédito' };
+  const cuerpo = (await gen.text()).slice(0, 200);
+  if (/credit balance/i.test(cuerpo)) {
+    return { ok: false, detalle: 'la cuenta de Anthropic NO TIENE CRÉDITO (Plans & Billing), el bot no puede contestar' };
+  }
+  return { ok: false, detalle: `generación de prueba falló: HTTP ${gen.status} — ${cuerpo}` };
 }
 
 async function verificarOpenAI(): Promise<Resultado | null> {

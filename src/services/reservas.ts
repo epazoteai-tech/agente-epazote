@@ -71,6 +71,21 @@ export function fechaCorta(fecha: string): string {
   return `${DIA_CORTO[dia]} ${d} ${MES_CORTO[mes - 1]}`;
 }
 
+const MES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/**
+ * "2026-10-03" → "sábado 3 de octubre". Es lo que lee el CLIENTE en la
+ * plantilla de recordatorio ({{contact.reserva_fecha}}), así que va completo y
+ * sin la fecha ISO: antes el campo guardaba "sáb 3 oct (2026-10-03)" y el
+ * paréntesis le habría llegado tal cual.
+ */
+export function fechaLarga(fecha: string): string {
+  const dia = diaDeLaSemana(fecha);
+  if (dia === null) return fecha;
+  const [, mes, d] = fecha.split('-').map(Number);
+  return `${NOMBRE_DIA[dia]} ${d} de ${MES_LARGO[mes - 1]}`;
+}
+
 export interface SolicitudReserva {
   nombre: string;
   fecha: string; // YYYY-MM-DD
@@ -85,6 +100,8 @@ export type ResultadoValidacion =
       turno: string;
       horaLegible: string;
       fechaLegible: string;
+      /** "sábado 3 de octubre", para lo que lee el cliente. */
+      fechaLarga: string;
       resumen: string;
     }
   | { ok: false; error: string; message: string };
@@ -191,7 +208,7 @@ export function validarReserva(
     .filter(Boolean)
     .join(' · ');
 
-  return { ok: true, turno, horaLegible: hl, fechaLegible, resumen };
+  return { ok: true, turno, horaLegible: hl, fechaLegible, fechaLarga: fechaLarga(s.fecha), resumen };
 }
 
 // ─── Redes sobre el texto que sale ────────────────────────────────────────────

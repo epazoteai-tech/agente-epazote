@@ -142,7 +142,10 @@ reservations:
     - { nombre: cena, desde: "18:00", hasta: "24:00" }
   stage: Reserva registrada
   fields:
+    # "sábado 3 de octubre": lo lee el cliente en la plantilla de recordatorio.
     fecha: XA4CUd13njMLTVRhb3ZL
+    # Campo de tipo FECHA (YYYY-MM-DD): del que cuelga el Workflow de recordatorio.
+    fecha_dia: qkpp0zGMFOfo6TOdPH2O
     hora: ZlTyl9QFKWA5bSqzse8B
     personas: rsSnMMpijnrfaE3wBW4T
     ocasion: IfnCmepFHD9Sc5oAPkyu

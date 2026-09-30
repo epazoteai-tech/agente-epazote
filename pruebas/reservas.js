@@ -9,7 +9,7 @@
  * inferido por la hora y el formato del resumen de la notificación.
  */
 const path = require('path');
-const { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro } = require(path.join(__dirname, '..', 'dist', 'services', 'reservas.js'));
+const { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, fechaLarga } = require(path.join(__dirname, '..', 'dist', 'services', 'reservas.js'));
 
 const CFG = {
   timezone: 'America/Monterrey',
@@ -66,6 +66,13 @@ const esperadoResumen = 'Juan Pérez · 4 personas · sáb 26 sep · 8:30 pm · 
 const okRes = r.ok && r.resumen === esperadoResumen;
 if (!okRes) fallas++;
 console.log(`${okRes ? '✅' : '❌'} resumen exacto → "${r.ok ? r.resumen : r.error}"`);
+
+// Fecha larga para la plantilla de recordatorio (sin la ISO entre paréntesis)
+for (const [f, esperado] of [['2026-10-03', 'sábado 3 de octubre'], ['2026-12-31', 'jueves 31 de diciembre'], ['2027-01-01', 'viernes 1 de enero']]) {
+  const ok = fechaLarga(f) === esperado;
+  if (!ok) fallas++;
+  console.log(`${ok ? '✅' : '❌'} fecha larga: ${f} → "${fechaLarga(f)}"`);
+}
 
 // Origen de campaña: primer mensaje del contacto en la sesión actual.
 const h = (role, content, ts) => ({ role, content, ts });

@@ -1474,7 +1474,8 @@ async function handleRegistrarReserva(
     // Todos los campos ANTES del tag: el Workflow dispara con el tag y lee el
     // resumen como merge field; si el tag llega primero, la notificación sale
     // con el resumen de la reserva anterior (o vacío).
-    await updateContactCustomField(contactId, res.fields.fecha, `${v.fechaLegible} (${solicitud.fecha})`);
+    await updateContactCustomField(contactId, res.fields.fecha, v.fechaLarga);
+    if (res.fields.fecha_dia) await updateContactCustomField(contactId, res.fields.fecha_dia, solicitud.fecha);
     await updateContactCustomField(contactId, res.fields.hora, v.horaLegible);
     await updateContactCustomField(contactId, res.fields.personas, String(solicitud.personas));
     // Un espacio y no "": GHL no guarda strings vacíos (ver seedCustomFields).

@@ -259,6 +259,10 @@ const ReservationsSchema = z
       personas: z.string().min(1),
       ocasion: z.string().min(1),
       resumen: z.string().min(1),
+      // Opcional: campo de tipo FECHA (YYYY-MM-DD) con el día de la reserva. Es
+      // del que cuelga el Workflow de recordatorio: un campo de texto no le
+      // sirve a GHL para calcular "un día antes".
+      fecha_dia: z.string().min(1).optional(),
       // Opcional: primer mensaje de la sesión (texto precargado del wa.link del
       // creativo). Lo lee la Mesa de Control para el ROAS por creativo.
       origen: z.string().min(1).optional(),

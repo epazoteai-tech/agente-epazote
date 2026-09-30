@@ -54,6 +54,13 @@ Deploy: ✅ Railway `agente-epazote-production.up.railway.app`, `/health` OK con
 8. ✅ Workflow de notificación a **Mony**: trigger "Tag Added: reserva-solicitada" → Internal Notification a su usuario de GHL (activar notificaciones de la app móvil de GHL en su teléfono) con `{{contact.reserva_resumen}}`, `{{contact.reserva_origen}}` y el teléfono del contacto. Nunca SMS al contacto.
 9. ✅ Workflow de escalación (recomendado): trigger "Tag Added: atencion-humana" → notificación interna con la última nota del contacto.
 
+## Recordatorio de reserva por plantilla (30/09/2026)
+
+- ✅ Campo `reserva_fecha_dia` (tipo FECHA, id `qkpp0zGMFOfo6TOdPH2O`), lo llena el bot al registrar. `reserva_fecha` ahora es "sábado 3 de octubre".
+- ✅ El prompt conoce la plantilla y sus botones ("Ahí estaremos" / "Necesito cambiarla").
+- ⏳ Jorge: plantilla `recordatorio_reserva` (Utility, es_MX) aprobada por Meta + Workflow con trigger de fecha sobre `reserva_fecha_dia`, **filtrado a la etapa Confirmada**.
+- ⏳ Probar con una reserva a varios días y mirar el reloj (E124): el recordatorio no debe salir al instante.
+
 ## Pruebas antes de entregar (Paso 4 adaptado)
 
 - `npm test`: incluye `pruebas/reservas.js` (validación de horario, grupo grande, resumen).

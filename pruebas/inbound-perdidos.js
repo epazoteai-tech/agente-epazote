@@ -20,7 +20,7 @@ const {
   marcadorDeMedia,
   VENTANA_INCORPORACION_MS,
 } = require('../dist/services/inbound');
-const { filtrarPorInboundReciente } = require('../dist/services/ghl');
+const { filtrarPorInboundReciente, esMensajeDeChat } = require('../dist/services/ghl');
 
 let fallos = 0;
 function check(nombre, real, esperado) {
@@ -61,6 +61,15 @@ check('un correo o un mensaje de Facebook NO se incorpora',
 check('WhatsApp sí', candidatosParaIncorporar([msg('w', 'hola', '2026-10-05T16:25:20.000Z')], AHORA).length, 1);
 
 console.log('\nDuplicados: solo contra lo que entró sin id, y nunca con "contiene" (E161)\n');
+// Coexistencia con WhatsApp Business: GHL importa las llamadas como TYPE_CALL.
+// Una llamada nunca es un mensaje que el bot deba contestar por chat.
+check('una llamada no es un mensaje de chat', esMensajeDeChat('TYPE_CALL'), false);
+check('un buzón de voz tampoco', esMensajeDeChat('TYPE_VOICEMAIL'), false);
+check('una actividad interna tampoco', esMensajeDeChat('TYPE_ACTIVITY_OPPORTUNITY'), false);
+check('un tipo desconocido queda fuera', esMensajeDeChat('TYPE_NUEVO_DE_GHL'), false);
+check('WhatsApp sí', esMensajeDeChat('TYPE_WHATSAPP'), true);
+check('sin tipo, fuera', esMensajeDeChat(undefined), false);
+
 const hace = (min) => new Date(AHORA - min * 60_000).toISOString();
 const r = descartarYaConocidos(RAFAGA, [{ texto: 'Hola buen día', at: hace(1) }], AHORA);
 check('lo que entró sin id se descarta', r.quedan.map((m) => m.id), ['m2', 'm3', 'm4']);

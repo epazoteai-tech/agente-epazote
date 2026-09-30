@@ -117,6 +117,38 @@ export interface LatestMessageInfo {
  * WhatsApp con un warning — es el canal más usado y reduce el riesgo de
  * fallar el envío.
  */
+/**
+ * Tipos de mensaje de GHL que son CHAT (algo que el cliente escribió o mandó).
+ *
+ * `mapInboundTypeToChannel` cae a WhatsApp con cualquier tipo desconocido, que
+ * sirve para saber por dónde CONTESTAR pero no para decidir qué es un mensaje.
+ * Al conectar el número de Epazote (coexistencia con WhatsApp Business, 30/09/2026)
+ * GHL importó el registro de llamadas como `TYPE_CALL`: una llamada entrante con
+ * grabación o buzón se habría leído como "el cliente mandó un audio por
+ * WhatsApp", y el bot le habría escrito a quien solo llamó. Lista blanca, no
+ * negra: el tipo nuevo que invente GHL mañana queda fuera hasta que alguien lo
+ * agregue a propósito.
+ */
+const TIPOS_DE_CHAT: ReadonlySet<string> = new Set([
+  'TYPE_WHATSAPP',
+  'TYPE_FB',
+  'TYPE_FACEBOOK',
+  'TYPE_FB_MESSENGER',
+  'TYPE_IG',
+  'TYPE_INSTAGRAM',
+  'TYPE_INSTAGRAM_DIRECT_MESSAGE',
+  'TYPE_SMS',
+  'TYPE_CUSTOM_PROVIDER_SMS',
+  'TYPE_EMAIL',
+  'TYPE_GMB',
+  'TYPE_LIVE_CHAT',
+  'TYPE_WEBCHAT',
+]);
+
+export function esMensajeDeChat(messageType: string | undefined | null): boolean {
+  return typeof messageType === 'string' && TIPOS_DE_CHAT.has(messageType);
+}
+
 function mapInboundTypeToChannel(rawType: string | undefined): GhlChannel {
   switch (rawType) {
     case 'TYPE_WHATSAPP':
@@ -225,8 +257,7 @@ export async function getLatestMessageInfo(
           m.direction === 'inbound' &&
           typeof m.id === 'string' &&
           m.id &&
-          typeof m.messageType === 'string' &&
-          !m.messageType.startsWith('TYPE_ACTIVITY')
+          esMensajeDeChat(m.messageType)
       )
       .map((m) => {
         const u = m.attachments?.[0];

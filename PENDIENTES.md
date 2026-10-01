@@ -106,3 +106,27 @@ Es best-effort: si falla, la reserva queda en GHL igual y el log dice `[mesa-con
 - `mensajeDeOrigen`: primer mensaje de la sesión como origen de campaña, más el POST opcional a la Mesa de Control.
 - Una solicitud registrada en las últimas 24h cuenta como conversación cerrada para los follow-ups.
 - `pruebas/medir-modelo.js` responde `registrar_reserva` con la validación real y le pasa la fecha de hoy al modelo.
+
+## Mesa de Control — fase 1 (30/09/2026)
+
+Vive dentro del bot (patrón del KDS de Viking Food): `https://agente-epazote-production.up.railway.app/mesa/`, protegida con `MESA_PIN` (variable de Railway; sin ella la puerta queda cerrada para todos y el bot sigue funcionando).
+
+- **Día:** reservas del día con Confirmar / Cancelar → Llegó / No llegó → Cerrar mesa (total a mano). Walk-in en dos toques (personas + cómo se enteró). Reserva por teléfono (entra confirmada). Corregir hora o personas.
+- **Cada cambio de estado mueve la tarjeta en GHL** (Confirmada / Asistió / No asistió): Mony hace una sola acción y el recordatorio por plantilla, que cuelga de "Confirmada", funciona solo.
+- **Próximas:** 14 días.
+- **Resumen:** embudo, show rate (solo sobre reservas ya decididas), ticket por turno y por origen, ROAS por campaña (gasto mensual prorrateado), walk-ins por cómo se enteraron, CSV.
+- **Campañas:** nombre + palabra clave del mensaje precargado del wa.link + gasto mensual. Gana la palabra clave más específica.
+- Las reservas del bot entran solas (`guardarReservaDelBot`); un "CAMBIO de la solicitud anterior" corrige la misma fila.
+- Probado: `pruebas/mesa.js` (20 casos puros), arnés contra Postgres real en PGlite (esquema 3 veces, candado y freno, flujo completo, dashboard, CSV: 29/29) y navegador en tamaño celular y escritorio.
+
+### Fase 2 (pendiente)
+- Foto del ticket → Claude Vision → total + platillos (columnas `foto_url`, `parse_json` ya existen). Antes: 3-5 fotos de tickets reales para probar si el parse es confiable.
+- Evento **Purchase** a Meta por Conversions API al cerrar la mesa (columnas `capi_*` ya existen). Requisitos de configuración: ver abajo.
+
+### Para el evento Purchase a Meta (configuración, lo hace Jorge)
+1. **Dataset / Pixel ID de Epazote** en Events Manager (Business Manager de Epazote).
+2. **Token de Conversions API** de ese dataset: Events Manager → dataset → Configuración → Conversions API → Generar token de acceso. Va a Railway como variable, nunca al repo.
+3. **Acceso del Business Manager de la agencia** al dataset (o el token generado por el dueño).
+4. **Código de evento de prueba** (Events Manager → Probar eventos) para la primera semana.
+5. Confirmar con Gustavo el aviso de privacidad: se manda el teléfono **hasheado** (SHA-256) del cliente para que Meta lo empate.
+6. Las campañas de wa.link no traen `ctwa_clid`, así que el empate es por teléfono (+ nombre) con `action_source: physical_store`. Si algún día corren anuncios Click-to-WhatsApp nativos, se puede atribuir por clic, que empata mucho mejor.

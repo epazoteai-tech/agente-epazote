@@ -13,8 +13,18 @@ import { SCHEMA_SQL } from './db/schema';
 import { getConfig } from './config';
 import { warnIfApiKeysLookSwapped } from './env';
 import { verificarLlaves } from './verificar-llaves';
+import path from 'path';
+import { mesaRouter } from './routes/mesa';
+import { requierePin, requierePinODaPantalla } from './auth';
 
 const app = express();
+
+// Railway pone un proxy delante. Sin esto `req.ip` es la IP del proxy, igual
+// para todos, y el freno del PIN de la Mesa de Control dejaría fuera al host
+// por culpa de un desconocido. Con 1 salto, Express toma la IP que añadió
+// Railway y no una X-Forwarded-For falsificada (lección del KDS de Viking).
+app.set('trust proxy', 1);
+
 app.use(express.json());
 
 // `version` = el commit que está sirviendo. Un 200 no prueba que tu último
@@ -73,6 +83,17 @@ app.get('/admin/conversations', requireAdminToken, async (_req, res, next) => {
   }
 });
 
+// Mesa de Control: TODO detrás del PIN. El candado va ANTES del static, o los
+// .html se servirían sin pasar por la puerta (E70). Sin MESA_PIN la puerta
+// queda cerrada para todos (auth.ts nunca compara contra vacío) y el bot de
+// WhatsApp sigue funcionando.
+app.use('/api/mesa', requierePin, mesaRouter);
+app.use(
+  '/mesa',
+  requierePinODaPantalla,
+  express.static(path.join(__dirname, '..', 'public', 'mesa'), { index: 'index.html', dotfiles: 'deny' })
+);
+
 // Middleware global de errores — captura cualquier error async de las rutas
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[error]', err.message);
@@ -86,6 +107,13 @@ async function main() {
   // un error, mejor fallar acá con un mensaje claro que más adelante.
   const config = getConfig();
   console.log(`[config] Loaded for bot=${config.bot.name} (${config.business.name})`);
+
+  if (!process.env.MESA_PIN) {
+    console.error(
+      '[config] FALTA MESA_PIN — la Mesa de Control (/mesa) rechaza TODO acceso. ' +
+        'El bot de WhatsApp sigue funcionando. Pon MESA_PIN en las variables de Railway.'
+    );
+  }
 
   warnIfApiKeysLookSwapped();
 

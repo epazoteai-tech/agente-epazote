@@ -86,6 +86,17 @@ export function fechaLarga(fecha: string): string {
   return `${NOMBRE_DIA[dia]} ${d} de ${MES_LARGO[mes - 1]}`;
 }
 
+/** Desayuno / comida / cena según la hora, con los turnos del yaml. */
+export function turnoDe(minutos: number, cfg: Pick<ReservationsConfig, 'turnos'>): string {
+  return (
+    cfg.turnos.find((t) => {
+      const a = minutosDe(t.desde);
+      const b = minutosDe(t.hasta);
+      return a !== null && b !== null && minutos >= a && minutos < b;
+    })?.nombre ?? ''
+  );
+}
+
 export interface SolicitudReserva {
   nombre: string;
   fecha: string; // YYYY-MM-DD
@@ -187,12 +198,7 @@ export function validarReserva(
     };
   }
 
-  const turno =
-    cfg.turnos.find((t) => {
-      const a = minutosDe(t.desde);
-      const b = minutosDe(t.hasta);
-      return a !== null && b !== null && minutos >= a && minutos < b;
-    })?.nombre ?? '';
+  const turno = turnoDe(minutos, cfg);
 
   const ocasion = (s.ocasion ?? '').trim();
   const fechaLegible = fechaCorta(s.fecha);

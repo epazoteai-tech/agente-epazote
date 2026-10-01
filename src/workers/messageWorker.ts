@@ -49,6 +49,7 @@ import {
 import { contactoBloqueadoAsync } from '../blocklist';
 import { pareceNombreReal } from '../nombres';
 import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro } from '../services/reservas';
+import { guardarReservaDelBot } from '../services/mesa';
 
 /**
  * Estado compartido entre las tools de UN mismo turno (un job del worker).
@@ -1500,6 +1501,24 @@ async function handleRegistrarReserva(
     (err) => console.warn(`[tool:registrar_reserva] nota falló: ${(err as Error).message}`)
   );
   if (res.stage) autoMoveStage(contactId, res.stage, turn.leadLabel).catch(() => {});
+  // Mesa de Control (misma base). Best-effort: si falla, la solicitud ya está
+  // en GHL y Mony ya tiene el aviso; se pierde solo la fila del panel.
+  guardarReservaDelBot(
+    {
+      contactId,
+      nombre,
+      telefono,
+      fecha: solicitud.fecha,
+      hora: solicitud.hora,
+      personas: solicitud.personas,
+      ocasion: solicitud.ocasion,
+      turno: v.turno,
+      origen,
+    },
+    res.timezone
+  )
+    .then((m) => console.log(`[mesa] reserva ${m.accion} id=${m.id} | contact=${contactId}`))
+    .catch((err) => console.error(`[mesa] no se pudo guardar la reserva | contact=${contactId}: ${(err as Error).message}`));
   if (res.mesa_control_url) {
     enviarAMesaDeControl(res.mesa_control_url, {
       contacto_ghl_id: contactId,

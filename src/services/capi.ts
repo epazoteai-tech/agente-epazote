@@ -186,24 +186,40 @@ export async function enviarPendientes(): Promise<{ enviados: number; fallidos: 
 }
 
 /**
- * Para el arranque (verificar-llaves): el token puede leer el dataset. No manda
- * ningún evento. null = CAPI no configurado (no es un error).
+ * Para el arranque (verificar-llaves) y GET /api/mesa/meta/estado: ¿este token
+ * puede MANDAR eventos a este dataset? null = CAPI no configurado (no es error).
+ *
+ * Se prueba con un POST a /events con la lista VACÍA. Meta revisa token y
+ * permisos antes que el contenido, así que la respuesta lo dice sin registrar
+ * ningún evento: error 190 = token inválido; "permission" = el token no tiene
+ * acceso a ese dataset; un reclamo por el parámetro `data` = todo bien.
+ *
+ * No se lee el dataset (GET /{id}?fields=name): el token de Conversions API
+ * solo puede mandar eventos, y esa lectura contesta "(#100) Missing
+ * Permission" aunque el token funcione — nos dio un falso negativo el
+ * 01/10/2026 con el token bueno de Epazote.
  */
 export async function verificarMeta(): Promise<{ ok: boolean; detalle: string } | null> {
   if (!process.env.META_DATASET_ID && !process.env.META_CAPI_TOKEN) return null;
   if (!capiConfigurado()) return { ok: false, detalle: 'falta META_DATASET_ID o META_CAPI_TOKEN (o está vacía)' };
-  const v = process.env.META_GRAPH_VERSION?.trim() || 'v23.0';
-  const res = await fetch(
-    `https://graph.facebook.com/${v}/${process.env.META_DATASET_ID!.trim()}?fields=id,name&access_token=${encodeURIComponent(process.env.META_CAPI_TOKEN!.trim())}`,
-    { signal: AbortSignal.timeout(8_000) }
-  );
-  const d = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (!res.ok) {
-    const e = (d.error ?? {}) as Record<string, unknown>;
-    return { ok: false, detalle: `Meta rechazó el token o el dataset: ${String(e.message ?? res.status).slice(0, 200)}` };
-  }
+  const res = await fetch(`${urlEventos()}?access_token=${encodeURIComponent(process.env.META_CAPI_TOKEN!.trim())}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ data: [] }),
+    signal: AbortSignal.timeout(8_000),
+  });
+  const d = (await res.json().catch(() => ({}))) as { error?: { code?: number; message?: string } };
+  const e = d.error ?? {};
+  const msg = String(e.message ?? '');
   const prueba = process.env.META_TEST_EVENT_CODE?.trim()
     ? ' ⚠️ CON código de prueba: los eventos NO cuentan en campañas hasta quitar META_TEST_EVENT_CODE'
     : '';
-  return { ok: true, detalle: `dataset "${String(d.name ?? d.id)}"${prueba}` };
+  if (res.ok || (e.code === 100 && /\bdata\b/i.test(msg) && !/permission/i.test(msg))) {
+    return { ok: true, detalle: `token y dataset aceptan eventos${prueba}` };
+  }
+  if (e.code === 190) return { ok: false, detalle: `token inválido o vencido: ${msg.slice(0, 200)}` };
+  if (/permission|permiso/i.test(msg) || e.code === 10 || e.code === 200) {
+    return { ok: false, detalle: `el token no tiene permiso sobre el dataset ${process.env.META_DATASET_ID}: ${msg.slice(0, 200)}` };
+  }
+  return { ok: false, detalle: `respuesta inesperada de Meta (HTTP ${res.status}): ${msg.slice(0, 200) || JSON.stringify(d).slice(0, 200)}` };
 }

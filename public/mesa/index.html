@@ -7,100 +7,146 @@
 <meta name="theme-color" content="#78502F" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<!-- Manual de identidad: Agency (títulos, condensada, mayúsculas) y Bahnschrift
+     (cuerpo). No están en Google Fonts; Teko y Barlow son sus equivalentes más
+     cercanos (Barlow es de la misma familia DIN que Bahnschrift). -->
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
+  /* Paleta del manual de identidad: rojo #A33538 (la pasión por la comida),
+     blanco (la hospitalidad) y verde #0B8135 (la frescura). */
   :root {
-    --cream: #EDE6DC; --papel: #F7F3EE; --tinta: #181410; --barro: #78502F; --comal: #A87848;
-    --brasa: #C08A4E; --maiz: #C89D6B; --sombra: #483018; --gris: #8A7C6E; --linea: #DDD2C3;
-    --ok-bg: #23361F; --ok: #BFE3AE; --mal-bg: #5A1F1A; --mal: #F2B8AE;
-    --serif: 'Fraunces', Georgia, serif; --sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --rojo: #A33538; --rojo-osc: #7E2629; --rojo-claro: #FBEDEC;
+    --verde: #0B8135; --verde-osc: #086629; --verde-claro: #E6F3EA;
+    --blanco: #FFFFFF; --hueso: #FBF8F6; --tinta: #2A1C1B; --gris: #7C6C6A; --linea: #ECDDDB;
+    --titulo: 'Teko', 'Agency FB', 'Arial Narrow', sans-serif;
+    --texto: 'Barlow', 'Bahnschrift', system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--cream); color: var(--tinta); font-family: var(--sans); }
-  body { padding-bottom: env(safe-area-inset-bottom); }
-  header { position: sticky; top: 0; z-index: 5; background: var(--tinta); color: var(--cream); padding: 12px 16px 0; }
-  .marca { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .marca h1 { font-family: var(--serif); font-weight: 600; font-size: 1.35rem; margin: 0; letter-spacing: .02em; }
-  .marca small { color: var(--maiz); font-size: .8rem; }
-  #red { font-size: .75rem; color: var(--maiz); min-height: 1em; }
-  nav { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; }
-  nav button { flex: 1 0 auto; background: none; border: 0; color: var(--maiz); font: 600 .95rem var(--sans);
-    padding: 12px 10px; border-bottom: 3px solid transparent; cursor: pointer; }
-  nav button.activa { color: var(--cream); border-bottom-color: var(--brasa); }
-  main { max-width: 860px; margin: 0 auto; padding: 16px; }
+  html, body { margin: 0; color: var(--tinta); font-family: var(--texto); }
+  body {
+    background: var(--hueso) url('marca/patron.png') repeat;
+    background-size: 420px;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Encabezado: el rojo de la marca sobre la textura de estuco, como la portada del manual. */
+  header {
+    position: sticky; top: 0; z-index: 5; color: #fff;
+    background: var(--rojo) url('marca/estuco.jpg') center / 600px;
+    background-blend-mode: multiply;
+    box-shadow: 0 2px 14px rgba(126, 38, 41, .25);
+  }
+  .marca { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 14px 16px 6px; max-width: 900px; margin: 0 auto; }
+  .marca img { height: 40px; width: auto; display: block; }
+  .marca .sub { font-family: var(--titulo); font-size: 1.15rem; letter-spacing: .14em; text-transform: uppercase; line-height: 1; opacity: .92; }
+  #red { font-size: .78rem; min-height: 1em; padding: 0 16px; max-width: 900px; margin: 0 auto; }
+  nav { display: flex; overflow-x: auto; max-width: 900px; margin: 0 auto; padding: 0 8px; }
+  nav button { flex: 1 0 auto; background: none; border: 0; color: rgba(255,255,255,.72); cursor: pointer;
+    font: 500 1.25rem/1 var(--titulo); letter-spacing: .1em; text-transform: uppercase; padding: 12px 10px 9px; border-bottom: 3px solid transparent; }
+  nav button.activa { color: #fff; border-bottom-color: #fff; }
+  main { max-width: 900px; margin: 0 auto; padding: 18px 16px 40px; }
+
+  /* Separador de la marca: línea con rombos (◆────◆), como en las piezas aplicadas. */
+  h3.seccion { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; color: var(--rojo);
+    font: 500 1.35rem/1 var(--titulo); letter-spacing: .12em; text-transform: uppercase; }
+  h3.seccion::before, h3.seccion::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--rojo)); }
+  h3.seccion::after { background: linear-gradient(90deg, var(--rojo), transparent); }
+  h3.seccion span::before, h3.seccion span::after { content: '◆'; font-size: .55em; vertical-align: middle; margin: 0 8px; }
+  h3.seccion em { font-style: normal; background: var(--rojo); color: #fff; border-radius: 999px; font-size: .8em; padding: 3px 9px 0; letter-spacing: .04em; }
+
   .fila-fecha { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
-  .fila-fecha h2 { font-family: var(--serif); font-weight: 500; font-size: 1.25rem; margin: 0; text-transform: capitalize; }
-  .flecha { background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; width: 48px; height: 48px; font-size: 1.3rem; cursor: pointer; }
-  .acciones-top { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
-  .btn { border: 0; border-radius: 14px; padding: 14px 16px; min-height: 52px; font: 600 1rem var(--sans); cursor: pointer; }
+  .fila-fecha h2 { font: 500 1.8rem/1 var(--titulo); letter-spacing: .06em; text-transform: uppercase; margin: 0; color: var(--tinta); text-align: center; padding-top: 4px; }
+  .flecha { background: #fff; border: 1px solid var(--linea); color: var(--rojo); border-radius: 12px; width: 48px; height: 48px; font-size: 1.5rem; cursor: pointer; }
+  .acciones-top { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px; }
+
+  .btn { border: 0; border-radius: 12px; padding: 13px 16px; min-height: 52px; font: 600 1rem var(--texto); cursor: pointer; transition: transform .08s, filter .15s; }
   .btn:active { transform: scale(.98); }
-  .btn-principal { background: var(--barro); color: #fff; }
-  .btn-sec { background: var(--papel); color: var(--tinta); border: 1px solid var(--linea); }
-  .btn-ok { background: var(--ok-bg); color: var(--ok); }
-  .btn-mal { background: var(--mal-bg); color: var(--mal); }
-  .btn-tenue { background: transparent; color: var(--gris); border: 1px solid var(--linea); }
-  h3.seccion { font: 700 .78rem var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--barro); margin: 22px 0 10px; }
-  .vacio { color: var(--gris); font-size: .95rem; padding: 6px 0; }
-  .tarjeta { background: var(--papel); border: 1px solid var(--linea); border-radius: 16px; padding: 14px; margin-bottom: 10px; }
-  .tarjeta .arriba { display: flex; gap: 12px; align-items: flex-start; }
-  .hora { font-family: var(--serif); font-size: 1.6rem; font-weight: 600; line-height: 1; min-width: 72px; }
+  .btn:hover { filter: brightness(1.04); }
+  .btn-principal { background: var(--rojo); color: #fff; }
+  .btn-sec { background: #fff; color: var(--rojo); border: 1.5px solid var(--rojo); }
+  .btn-ok { background: var(--verde); color: #fff; }
+  .btn-mal { background: #fff; color: var(--rojo); border: 1.5px solid var(--linea); }
+  .btn-tenue { background: transparent; color: var(--gris); border: 1px dashed var(--linea); font-weight: 500; }
+
+  .vacio { color: var(--gris); font-size: .95rem; padding: 4px 0; }
+  .vacio-icono { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.7); border: 1px dashed var(--linea); border-radius: 14px; padding: 12px 14px; }
+  .vacio-icono::before { content: ''; width: 34px; height: 34px; flex: none; background: url('marca/maiz.png') center / contain no-repeat; opacity: .55; }
+
+  /* Tarjeta de reserva: blanca, con el marco fino interior del banner de la marca. */
+  .tarjeta { background: #fff; border: 1px solid var(--linea); border-radius: 16px; padding: 14px; margin-bottom: 10px;
+    box-shadow: 0 1px 0 rgba(42,28,27,.03), 0 6px 18px -12px rgba(126,38,41,.25); position: relative; }
+  .tarjeta .arriba { display: flex; gap: 14px; align-items: flex-start; }
+  .hora { font: 500 2.4rem/.8 var(--titulo); color: var(--rojo); min-width: 76px; padding-top: 6px; letter-spacing: .02em; }
+  .hora small { display: block; font-size: .42em; letter-spacing: .14em; color: var(--gris); margin-top: 4px; }
   .quien { flex: 1; min-width: 0; }
-  .quien b { font-size: 1.05rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .meta { color: var(--gris); font-size: .88rem; margin-top: 3px; }
+  .quien b { font-size: 1.12rem; font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { color: var(--gris); font-size: .9rem; margin-top: 2px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .chip { font-size: .75rem; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: var(--cream); color: var(--sombra); }
-  .chip.camp { background: var(--brasa); color: #fff; }
-  .chip.est-solicitada { background: #F3E3C8; color: var(--sombra); }
-  .chip.est-confirmada { background: var(--ok-bg); color: var(--ok); }
-  .chip.est-llego { background: var(--barro); color: #fff; }
-  .chip.est-no_llego, .chip.est-cancelada { background: var(--mal-bg); color: var(--mal); }
-  .ocasion { margin-top: 8px; font-size: .9rem; color: var(--sombra); }
+  .chip { font-size: .74rem; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: var(--hueso); color: var(--gris); border: 1px solid var(--linea); letter-spacing: .02em; }
+  .chip.camp { background: var(--rojo); color: #fff; border-color: var(--rojo); }
+  .chip.est-solicitada { background: var(--rojo-claro); color: var(--rojo); border-color: #F2CFCD; }
+  .chip.est-confirmada { background: var(--verde-claro); color: var(--verde-osc); border-color: #C5E3CE; }
+  .chip.est-llego { background: var(--verde); color: #fff; border-color: var(--verde); }
+  .chip.est-no_llego, .chip.est-cancelada { background: #F2EEED; color: var(--gris); }
+  .ocasion { margin-top: 10px; font-size: .92rem; color: var(--tinta); background: var(--hueso); border-left: 3px solid var(--verde); border-radius: 6px; padding: 7px 10px; }
   .botones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
   .botones .ancho { grid-column: 1 / -1; }
-  .total { font-family: var(--serif); font-size: 1.25rem; font-weight: 600; color: var(--barro); }
+  .total { font: 500 1.7rem/1 var(--titulo); color: var(--verde-osc); padding-top: 6px; }
   .pendiente { opacity: .6; }
-  /* Modales */
-  .velo { position: fixed; inset: 0; background: rgba(24, 20, 16, .55); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
+
+  /* Hojas modales */
+  .velo { position: fixed; inset: 0; background: rgba(42, 28, 27, .55); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
   .velo.abierto { display: flex; }
-  .hoja { background: var(--cream); width: 100%; max-width: 560px; border-radius: 22px 22px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow: auto; }
+  .hoja { background: #fff; width: 100%; max-width: 560px; border-radius: 22px 22px 0 0; padding: 0 16px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow: auto; border-top: 6px solid var(--rojo); }
   @media (min-width: 700px) { .velo { align-items: center; } .hoja { border-radius: 22px; } }
-  .hoja h3 { font-family: var(--serif); font-weight: 600; font-size: 1.3rem; margin: 0 0 4px; }
-  .hoja p.ayuda { color: var(--gris); margin: 0 0 16px; font-size: .92rem; }
+  .hoja h3 { font: 500 1.9rem/1 var(--titulo); letter-spacing: .08em; text-transform: uppercase; color: var(--rojo); margin: 20px 0 4px; }
+  .hoja p.ayuda { color: var(--gris); margin: 0 0 16px; font-size: .95rem; }
   .rejilla { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .rejilla button { min-height: 60px; font-size: 1.3rem; }
-  .rejilla button.sel { background: var(--barro); color: #fff; }
+  .rejilla button { min-height: 62px; font: 500 1.8rem/1 var(--titulo); padding-top: 16px; }
+  .rejilla button.sel { background: var(--rojo); color: #fff; border-color: var(--rojo); }
   .opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
-  .opciones button { min-height: 72px; }
-  label { display: block; font-size: .85rem; font-weight: 600; color: var(--sombra); margin: 12px 0 6px; }
-  input, select { width: 100%; font: 500 1.05rem var(--sans); padding: 13px 12px; border-radius: 12px; border: 1px solid var(--linea); background: #fff; color: var(--tinta); }
-  input.grande { font-family: var(--serif); font-size: 2rem; text-align: center; }
+  .opciones button { min-height: 74px; color: var(--tinta); border-color: var(--linea); }
+  .opciones button:hover { border-color: var(--verde); color: var(--verde-osc); }
+  label { display: block; font-size: .85rem; font-weight: 600; color: var(--gris); margin: 12px 0 6px; letter-spacing: .02em; }
+  input, select { width: 100%; font: 500 1.05rem var(--texto); padding: 13px 12px; border-radius: 12px; border: 1px solid var(--linea); background: var(--hueso); color: var(--tinta); }
+  input:focus { outline: none; border-color: var(--rojo); background: #fff; }
+  input.grande { font: 500 2.6rem/1 var(--titulo); text-align: center; color: var(--verde-osc); padding-top: 18px; }
   .pie-hoja { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 18px; }
-  .error { color: var(--mal-bg); min-height: 1.2em; font-size: .9rem; margin-top: 8px; }
+  .error { color: var(--rojo); min-height: 1.2em; font-size: .9rem; margin-top: 8px; }
+
   /* Resumen */
   .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
   .presets button { flex: 1 0 auto; }
-  .presets button.sel { background: var(--barro); color: #fff; }
+  .presets button.sel { background: var(--rojo); color: #fff; }
   .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   @media (min-width: 700px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
-  .kpi { background: var(--papel); border: 1px solid var(--linea); border-radius: 16px; padding: 14px; }
-  .kpi span { display: block; font-size: .78rem; color: var(--gris); font-weight: 600; }
-  .kpi strong { font-family: var(--serif); font-size: 1.8rem; font-weight: 600; }
-  .embudo .paso { margin-bottom: 10px; }
-  .embudo .etq { display: flex; justify-content: space-between; font-size: .9rem; margin-bottom: 4px; }
-  .barra { height: 14px; background: var(--linea); border-radius: 999px; overflow: hidden; }
-  .barra i { display: block; height: 100%; background: var(--barro); border-radius: 999px; }
-  table { width: 100%; border-collapse: collapse; font-size: .92rem; background: var(--papel); border-radius: 14px; overflow: hidden; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--linea); }
-  th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gris); }
+  .kpi { background: #fff; border: 1px solid var(--linea); border-radius: 16px; padding: 14px 14px 10px; border-top: 4px solid var(--rojo); }
+  .kpi:nth-child(2) { border-top-color: var(--verde); }
+  .kpi span { display: block; font-size: .8rem; color: var(--gris); font-weight: 600; letter-spacing: .02em; }
+  .kpi strong { font: 500 2.7rem/1 var(--titulo); color: var(--tinta); display: block; margin-top: 8px; }
+  .embudo .paso { margin-bottom: 12px; }
+  .embudo .etq { display: flex; justify-content: space-between; font-size: .95rem; margin-bottom: 5px; }
+  .embudo .etq b { font: 500 1.35rem/1 var(--titulo); color: var(--rojo); }
+  .barra { height: 12px; background: var(--rojo-claro); border-radius: 999px; overflow: hidden; }
+  .barra i { display: block; height: 100%; background: var(--rojo); border-radius: 999px; }
+  .embudo .paso:nth-child(3) .barra i, .embudo .paso:nth-child(4) .barra i { background: var(--verde); }
+  table { width: 100%; border-collapse: collapse; font-size: .94rem; background: #fff; border-radius: 14px; overflow: hidden; border: 1px solid var(--linea); }
+  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--linea); }
+  tr:last-child td { border-bottom: 0; }
+  th { font: 500 1rem/1 var(--titulo); letter-spacing: .1em; text-transform: uppercase; color: #fff; background: var(--rojo); padding-top: 13px; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.num b { color: var(--verde-osc); font-size: 1.05rem; }
+  td.num b.roas-bajo { color: var(--rojo); }
   .tabla-scroll { overflow-x: auto; }
-  .nota { background: #F3E3C8; color: var(--sombra); border-radius: 14px; padding: 12px 14px; font-size: .88rem; margin-top: 18px; }
+  .nota { background: var(--verde-claro); color: var(--verde-osc); border-radius: 14px; padding: 12px 14px; font-size: .9rem; margin-top: 18px; border-left: 4px solid var(--verde); }
   .oculto { display: none !important; }
 </style>
 </head>
 <body>
 <header>
-  <div class="marca"><h1>Epazote</h1><small>Mesa de Control</small></div>
+  <div class="marca">
+    <img src="marca/logo-blanco.png" alt="Epazote, Atmósfera culinaria" />
+    <span class="sub">Mesa de Control</span>
+  </div>
   <div id="red"></div>
   <nav>
     <button data-vista="hoy" class="activa">Día</button>
@@ -224,6 +270,7 @@
   function dinero(n) { return n == null ? '—' : '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
   function pct(x) { return x == null ? '—' : Math.round(x * 100) + '%'; }
   function hora12(h) { var p = String(h).split(':'), hh = +p[0], s = hh < 12 ? 'am' : 'pm', h12 = hh % 12 === 0 ? 12 : hh % 12; return h12 + ':' + p[1] + ' ' + s; }
+  function horaHtml(h) { var t = hora12(h).split(' '); return esc(t[0]) + '<small>' + esc(t[1] || '') + '</small>'; }
   function sumarDias(iso, n) { var d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
   function fechaBonita(iso) { var d = new Date(iso + 'T12:00:00Z'); return DIAS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MESES[d.getUTCMonth()]; }
 
@@ -297,7 +344,7 @@
   function botones(r) {
     var id = r.id;
     if (r.estado === 'solicitada') return '<button class="btn btn-ok" data-acc="confirmada" data-id="' + id + '">Confirmar</button><button class="btn btn-mal" data-acc="cancelada" data-id="' + id + '">Cancelar</button>';
-    if (r.estado === 'confirmada') return '<button class="btn btn-principal" data-acc="llego" data-id="' + id + '">Llegó</button><button class="btn btn-mal" data-acc="no_llego" data-id="' + id + '">No llegó</button>';
+    if (r.estado === 'confirmada') return '<button class="btn btn-ok" data-acc="llego" data-id="' + id + '">Llegó</button><button class="btn btn-mal" data-acc="no_llego" data-id="' + id + '">No llegó</button>';
     if (r.estado === 'llego') return '<button class="btn ' + (r.total == null ? 'btn-principal' : 'btn-sec') + ' ancho" data-acc="consumo" data-id="' + id + '">' + (r.total == null ? 'Cerrar mesa' : 'Corregir total') + '</button>';
     return '<button class="btn btn-tenue ancho" data-acc="confirmada" data-id="' + id + '">Reabrir como confirmada</button>';
   }
@@ -306,7 +353,7 @@
     var nombre = r.nombre || (r.canal === 'walk-in' ? 'Walk-in' : 'Sin nombre');
     var meta = r.personas + (r.personas === 1 ? ' persona' : ' personas') + (r.telefono ? ' · ' + esc(r.telefono) : '');
     return '<div class="tarjeta' + (r._pend ? ' pendiente' : '') + '" data-id="' + r.id + '">' +
-      '<div class="arriba"><div class="hora">' + esc(hora12(r.hora)) + '</div>' +
+      '<div class="arriba"><div class="hora">' + horaHtml(r.hora) + '</div>' +
       '<div class="quien"><b>' + esc(nombre) + '</b><div class="meta">' + meta + '</div><div class="chips">' + chips(r) + '</div></div>' +
       (r.total != null ? '<div class="total">' + dinero(r.total) + '</div>' : '') + '</div>' +
       (r.ocasion ? '<div class="ocasion">📝 ' + esc(r.ocasion) + '</div>' : '') +
@@ -314,7 +361,7 @@
   }
 
   function seccion(titulo, lista) {
-    return '<h3 class="seccion">' + titulo + ' · ' + lista.length + '</h3>' + (lista.length ? lista.map(tarjeta).join('') : '<div class="vacio">Nada por aquí.</div>');
+    return '<h3 class="seccion"><span>' + titulo + '</span><em>' + lista.length + '</em></h3>' + (lista.length ? lista.map(tarjeta).join('') : '<div class="vacio vacio-icono">Nada por aquí.</div>');
   }
 
   function pintarDia() {
@@ -341,7 +388,7 @@
       d.reservas.filter(function (r) { return r.estado !== 'cancelada'; }).forEach(function (r) { (porFecha[r.fecha] = porFecha[r.fecha] || []).push(r); });
       var fechas = Object.keys(porFecha).sort();
       estado.reservas = d.reservas;
-      $('#lista-proximas').innerHTML = fechas.length ? fechas.map(function (f) { return seccion(fechaBonita(f), porFecha[f]); }).join('') : '<div class="vacio">Sin reservas en los próximos 14 días.</div>';
+      $('#lista-proximas').innerHTML = fechas.length ? fechas.map(function (f) { return seccion(fechaBonita(f), porFecha[f]); }).join('') : '<div class="vacio vacio-icono">Sin reservas en los próximos 14 días.</div>';
     });
   }
 
@@ -446,7 +493,7 @@
       // ROAS siempre a la vista: es la métrica que se le vende al cliente, no
       // puede quedar escondida detrás de un scroll horizontal en el celular.
       h += '<h3 class="seccion">Retorno por campaña</h3>' + (d.roas.length ? '<div class="tabla-scroll"><table><tr><th>Campaña</th><th class="num">Ingreso</th><th class="num">Gasto</th><th class="num">ROAS</th></tr>' +
-        d.roas.map(function (x) { return '<tr><td>' + esc(x.campana) + '<div class="meta">' + x.solicitudes + ' solicitudes · ' + x.llegaron + ' llegaron</div></td><td class="num">' + dinero(x.ingreso) + '</td><td class="num">' + dinero(x.gasto) + '</td><td class="num"><b>' + (x.roas == null ? '—' : x.roas + 'x') + '</b></td></tr>'; }).join('') + '</table></div>' : '<div class="vacio">Agrega campañas en la pestaña Campañas para ver su retorno.</div>');
+        d.roas.map(function (x) { return '<tr><td>' + esc(x.campana) + '<div class="meta">' + x.solicitudes + (x.solicitudes === 1 ? ' solicitud · ' : ' solicitudes · ') + x.llegaron + (x.llegaron === 1 ? ' llegó' : ' llegaron') + '</div></td><td class="num">' + dinero(x.ingreso) + '</td><td class="num">' + dinero(x.gasto) + '</td><td class="num"><b class="' + (x.roas != null && x.roas < 1 ? 'roas-bajo' : '') + '">' + (x.roas == null ? '—' : x.roas + 'x') + '</b></td></tr>'; }).join('') + '</table></div>' : '<div class="vacio">Agrega campañas en la pestaña Campañas para ver su retorno.</div>');
       h += '<h3 class="seccion">Ticket promedio por origen</h3>' + tablaSimple(d.ticketPorOrigen, 'origen');
       h += '<h3 class="seccion">Ticket promedio por turno</h3>' + tablaSimple(d.ticketPorTurno, 'turno');
       var wk = Object.keys(d.walkins);
@@ -456,7 +503,7 @@
         h += '<h3 class="seccion">Compras enviadas a Meta</h3><div class="tarjeta"><div class="meta" style="font-size:.95rem;color:var(--tinta)">' +
           '<b>' + m.enviados + '</b> enviadas · ' + m.pendientes + ' por enviar (salen 10 min después de cerrar la mesa)' +
           (m.prueba ? ' · <b>' + m.prueba + '</b> en modo prueba' : '') +
-          (m.con_error ? ' · <b style="color:var(--mal-bg)">' + m.con_error + ' con error</b>' : '') +
+          (m.con_error ? ' · <b style="color:var(--rojo)">' + m.con_error + ' con error</b>' : '') +
           (m.sin_telefono ? ' · ' + m.sin_telefono + ' sin teléfono (walk-ins)' : '') + '</div></div>';
       }
       h += '<div class="nota">Los walk-ins que no se registran no aparecen aquí: el ROAS mostrado es piso, no techo. El gasto de cada campaña se prorratea a los días del periodo.</div>';

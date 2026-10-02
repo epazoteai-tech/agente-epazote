@@ -89,6 +89,13 @@ app.get('/admin/conversations', requireAdminToken, async (_req, res, next) => {
 // queda cerrada para todos (auth.ts nunca compara contra vacío) y el bot de
 // WhatsApp sigue funcionando.
 app.use('/api/mesa', requierePin, mesaRouter);
+// Logo, iconos y textura del manual de identidad: SIN PIN a propósito, porque
+// la pantalla del PIN los usa antes de que haya sesión. Aquí solo vive
+// material de marca que ya es público, nunca datos de clientes.
+app.use(
+  '/mesa/marca',
+  express.static(path.join(__dirname, '..', 'public', 'mesa', 'marca'), { maxAge: '7d', index: false, dotfiles: 'deny' })
+);
 app.use(
   '/mesa',
   requierePinODaPantalla,

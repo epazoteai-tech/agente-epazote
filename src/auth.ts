@@ -285,27 +285,34 @@ const PANTALLA_PIN = `<!doctype html>
 <meta charset="utf-8" />
 <title>Epazote — Mesa de Control</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@500&family=Barlow:wght@400;600&display=swap" rel="stylesheet" />
 <style>
-  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         background:#EDE6DC; color:#181410; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-  .caja { width:min(360px,90vw); text-align:center; }
-  h1 { font-size:1.25rem; letter-spacing:.08em; margin:0 0 .5rem; }
-  p.ayuda { color:#78502F; margin:0 0 1.5rem; font-size:.95rem; }
-  input { width:100%; box-sizing:border-box; font-size:2rem; text-align:center; letter-spacing:.4em;
-          padding:.75rem; border-radius:12px; border:2px solid #C89D6B; background:#fff; color:#181410; }
-  input:focus { outline:none; border-color:#78502F; }
-  button { width:100%; margin-top:1rem; padding:.9rem; font-size:1.05rem; font-weight:700;
-           border:0; border-radius:12px; background:#78502F; color:#fff; cursor:pointer; }
-  .error { color:#5A1F1A; margin-top:1rem; font-size:.9rem; min-height:1.2em; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; color:#2A1C1B;
+         background:#A33538 url('/mesa/marca/estuco.jpg') center / 600px; background-blend-mode:multiply;
+         font-family:'Barlow',system-ui,-apple-system,sans-serif; }
+  .caja { width:min(380px,90vw); text-align:center; }
+  .caja img { width:min(300px,78vw); display:block; margin:0 auto 26px; }
+  .tarjeta { background:#fff; border-radius:18px; padding:22px 20px 18px; box-shadow:0 18px 40px -18px rgba(0,0,0,.45); }
+  h1 { font:500 1.6rem/1 'Teko',sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#A33538; margin:4px 0 6px; }
+  p.ayuda { color:#7C6C6A; margin:0 0 18px; font-size:.95rem; }
+  input { width:100%; box-sizing:border-box; font:500 2.4rem/1 'Teko',sans-serif; text-align:center; letter-spacing:.45em;
+          padding:.6rem .4rem .35rem; border-radius:12px; border:1.5px solid #ECDDDB; background:#FBF8F6; color:#2A1C1B; }
+  input:focus { outline:none; border-color:#A33538; background:#fff; }
+  button { width:100%; margin-top:14px; padding:.95rem; font:600 1.05rem 'Barlow',sans-serif;
+           border:0; border-radius:12px; background:#0B8135; color:#fff; cursor:pointer; }
+  .error { color:#A33538; margin:12px 0 0; font-size:.9rem; min-height:1.2em; }
 </style>
 </head>
 <body>
 <div class="caja">
-  <h1>EPAZOTE</h1>
-  <p class="ayuda">Mesa de Control. Escribe el PIN: solo se pide una vez en este dispositivo.</p>
+  <img src="/mesa/marca/logo-blanco.png" alt="Epazote, Atmósfera culinaria" />
+  <div class="tarjeta">
+  <h1>Mesa de Control</h1>
+  <p class="ayuda">Escribe el PIN. Solo se pide una vez en este dispositivo.</p>
   <input id="pin" type="password" inputmode="numeric" autocomplete="off" autofocus />
   <button id="entrar">Entrar</button>
   <p class="error" id="error"></p>
+  </div>
 </div>
 <script>
 (function () {

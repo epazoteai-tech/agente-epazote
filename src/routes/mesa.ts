@@ -13,6 +13,7 @@ import { db } from '../db/client';
 import { getConfig } from '../config';
 import { minutosDe, turnoDe } from '../services/reservas';
 import { campanaDeOrigen, embudo, gastoDelPeriodo, Campana } from '../services/mesa';
+import { capiConfigurado, verificarMeta } from '../services/capi';
 import {
   findContactOpportunity,
   moveOpportunityToStage,
@@ -112,7 +113,8 @@ const SELECT_RESERVAS = `
   SELECT r.id::int AS id, r.contact_id, r.nombre, r.telefono, to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.hora,
          r.personas, r.ocasion, r.turno, r.origen_mensaje, r.canal, r.como_se_entero, r.estado,
          r.created_at, r.confirmada_at, r.llegada_at,
-         c.total::float AS total
+         c.total::float AS total,
+         (c.capi_enviado_at IS NOT NULL) AS en_meta
     FROM reservas r
     LEFT JOIN consumos c ON c.reserva_id = r.id`;
 
@@ -265,6 +267,15 @@ mesaRouter.post(
   })
 );
 
+/** ¿El token y el dataset de Meta funcionan? Lee el dataset, no manda eventos. */
+mesaRouter.get(
+  '/meta/estado',
+  ah(async (_req, res) => {
+    const r = await verificarMeta().catch((e: Error) => ({ ok: false, detalle: e.message }));
+    res.json(r ?? { ok: false, detalle: 'Conversions API sin configurar (faltan META_DATASET_ID y META_CAPI_TOKEN)' });
+  })
+);
+
 // ─── Campañas ────────────────────────────────────────────────────────────────
 
 mesaRouter.get(
@@ -345,10 +356,24 @@ mesaRouter.get(
       walkins[f.como_se_entero ?? 'sin dato'] = (walkins[f.como_se_entero ?? 'sin dato'] ?? 0) + 1;
     }
 
+    // Estado del Purchase a Meta en el periodo (fase 2). "prueba" = mandados con
+    // META_TEST_EVENT_CODE: llegan a "Probar eventos" pero no cuentan en campañas.
+    const { rows: capi } = await db.query(
+      `SELECT count(*) FILTER (WHERE c.capi_enviado_at IS NOT NULL AND NOT COALESCE((c.capi_respuesta->>'prueba')::boolean, false))::int AS enviados,
+              count(*) FILTER (WHERE c.capi_enviado_at IS NOT NULL AND COALESCE((c.capi_respuesta->>'prueba')::boolean, false))::int AS prueba,
+              count(*) FILTER (WHERE c.capi_enviado_at IS NULL AND c.capi_respuesta ? 'omitido')::int AS sin_telefono,
+              count(*) FILTER (WHERE c.capi_enviado_at IS NULL AND c.capi_respuesta ? 'error')::int AS con_error,
+              count(*) FILTER (WHERE c.capi_enviado_at IS NULL AND c.capi_respuesta IS NULL)::int AS pendientes
+         FROM consumos c JOIN reservas r ON r.id = c.reserva_id
+        WHERE r.fecha BETWEEN $1 AND $2`,
+      [desde, hasta]
+    );
+
     res.json({
       desde,
       hasta,
       dias,
+      meta: capiConfigurado() ? capi[0] : null,
       embudo: embudo(filas),
       ticketPorTurno: Object.entries(porTurno).map(([turno, xs]) => ({ turno, mesas: xs.length, promedio: promedio(xs) })),
       ticketPorOrigen: Object.entries(porOrigen).map(([origen, xs]) => ({ origen, mesas: xs.length, promedio: promedio(xs) })),

@@ -41,6 +41,7 @@
  * meterle riesgo al arranque para ganar nada.
  */
 
+import { verificarMeta } from './services/capi';
 import { getConfig } from './config';
 
 /** Ninguna verificación puede colgar el arranque más que esto. */
@@ -203,10 +204,11 @@ async function verificarGHL(): Promise<Resultado> {
  * como fallo de esa verificación y las demás siguen su curso.
  */
 export async function verificarLlaves(): Promise<void> {
-  const [anthropic, openai, ghl] = await Promise.all([
+  const [anthropic, openai, ghl, meta] = await Promise.all([
     verificarAnthropic().catch((e: Error) => ({ ok: false, detalle: `no se pudo verificar: ${e.message}` })),
     verificarOpenAI().catch((e: Error) => ({ ok: false, detalle: `no se pudo verificar: ${e.message}` })),
     verificarGHL().catch((e: Error) => ({ ok: false, detalle: `no se pudo verificar: ${e.message}` })),
+    verificarMeta().catch((e: Error) => ({ ok: false, detalle: `no se pudo verificar: ${e.message}` })),
   ]);
 
   // `critico` separa lo que deja al bot MUDO de lo que solo le quita una
@@ -216,6 +218,7 @@ export async function verificarLlaves(): Promise<void> {
     ['Anthropic (el bot no puede pensar sin esto)', anthropic, true],
     ['OpenAI / Whisper (las notas de voz)', openai, false],
     ['GoHighLevel (leer y responder, y mover el pipeline)', ghl, true],
+    ['Meta Conversions API (el Purchase de la Mesa de Control)', meta, false],
   ];
 
   const rotos = chequeos.filter(([, r]) => r && !r.ok) as Array<[string, Resultado, boolean]>;

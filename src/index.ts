@@ -16,6 +16,7 @@ import { verificarLlaves } from './verificar-llaves';
 import path from 'path';
 import { mesaRouter } from './routes/mesa';
 import { requierePin, requierePinODaPantalla } from './auth';
+import { enviarPendientes, capiConfigurado } from './services/capi';
 
 const app = express();
 
@@ -148,6 +149,13 @@ async function main() {
   if (config.follow_ups) {
     await startFollowUpWorker(1);
   }
+
+  // Purchase a Meta (Mesa de Control, fase 2): cada minuto manda los consumos
+  // cerrados hace más de 10 min. Sin variables de Meta no hace nada.
+  if (capiConfigurado()) console.log('[capi] Conversions API configurada: barrido cada 60s');
+  setInterval(() => {
+    enviarPendientes().catch((e) => console.error(`[capi] barrido falló: ${(e as Error).message}`));
+  }, 60_000).unref?.();
 
   // Barredor de mensajes que se quedaron sin turno (E150), cada minuto.
   setInterval(() => {

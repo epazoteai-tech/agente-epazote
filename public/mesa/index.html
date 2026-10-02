@@ -290,6 +290,7 @@
     else if (r.canal === 'telefono') h += '<span class="chip">Teléfono</span>';
     else h += r.campana ? '<span class="chip camp">' + esc(r.campana) + '</span>' : '<span class="chip">WhatsApp</span>';
     if (r.turno) h += '<span class="chip">' + esc(r.turno) + '</span>';
+    if (r.en_meta) h += '<span class="chip est-confirmada">Meta ✓</span>';
     return h;
   }
 
@@ -450,6 +451,14 @@
       h += '<h3 class="seccion">Ticket promedio por turno</h3>' + tablaSimple(d.ticketPorTurno, 'turno');
       var wk = Object.keys(d.walkins);
       h += '<h3 class="seccion">Walk-ins: cómo se enteraron</h3>' + (wk.length ? '<div class="tabla-scroll"><table>' + wk.map(function (k) { return '<tr><td>' + esc(COMO[k] || k) + '</td><td class="num">' + d.walkins[k] + '</td></tr>'; }).join('') + '</table></div>' : '<div class="vacio">Sin walk-ins registrados.</div>');
+      if (d.meta) {
+        var m = d.meta;
+        h += '<h3 class="seccion">Compras enviadas a Meta</h3><div class="tarjeta"><div class="meta" style="font-size:.95rem;color:var(--tinta)">' +
+          '<b>' + m.enviados + '</b> enviadas · ' + m.pendientes + ' por enviar (salen 10 min después de cerrar la mesa)' +
+          (m.prueba ? ' · <b>' + m.prueba + '</b> en modo prueba' : '') +
+          (m.con_error ? ' · <b style="color:var(--mal-bg)">' + m.con_error + ' con error</b>' : '') +
+          (m.sin_telefono ? ' · ' + m.sin_telefono + ' sin teléfono (walk-ins)' : '') + '</div></div>';
+      }
       h += '<div class="nota">Los walk-ins que no se registran no aparecen aquí: el ROAS mostrado es piso, no techo. El gasto de cada campaña se prorratea a los días del periodo.</div>';
       h += '<p style="margin-top:16px"><a class="btn btn-sec" style="display:inline-block;text-decoration:none" href="' + API + '/export.csv?desde=' + rg.desde + '&hasta=' + rg.hasta + '">Descargar CSV</a></p>';
       $('#resumen').innerHTML = h;

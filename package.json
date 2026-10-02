@@ -18,7 +18,8 @@
     "test:reservas": "npm run build && TZ=UTC node pruebas/reservas.js",
     "test:inbound": "npm run build && node pruebas/inbound-perdidos.js",
     "test:mesa": "npm run build && node pruebas/mesa.js",
-    "test": "npm run build && npm run test:guards && npm run test:razonamiento && npm run test:cancelar && TZ=UTC node pruebas/horario.js && TZ=UTC node pruebas/reservas.js && TZ=UTC node pruebas/inbound-perdidos.js && TZ=UTC node pruebas/mesa.js"
+    "test:capi": "npm run build && node pruebas/capi.js",
+    "test": "npm run build && npm run test:guards && npm run test:razonamiento && npm run test:cancelar && TZ=UTC node pruebas/horario.js && TZ=UTC node pruebas/reservas.js && TZ=UTC node pruebas/inbound-perdidos.js && TZ=UTC node pruebas/mesa.js && TZ=UTC node pruebas/capi.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",

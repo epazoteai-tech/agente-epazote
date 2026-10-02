@@ -100,6 +100,8 @@ CREATE TABLE IF NOT EXISTS consumos (
   actualizado_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_consumos_reserva ON consumos(reserva_id) WHERE reserva_id IS NOT NULL;
+-- Reintentos del Purchase a Meta (services/capi.ts): tope para no martillar.
+ALTER TABLE consumos ADD COLUMN IF NOT EXISTS capi_intentos INT NOT NULL DEFAULT 0;
 
 -- Campañas: cada creativo con su wa.link trae un mensaje precargado distinto.
 -- palabra_clave es un pedazo de ese texto ("cabrito", "machacado"): la

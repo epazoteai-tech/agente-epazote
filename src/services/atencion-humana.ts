@@ -35,6 +35,27 @@ const norm = (t: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+/**
+ * Segundos máximos entre un mensaje del cliente y una respuesta que NO puede
+ * haber escrito una persona. El saludo automático de WhatsApp Business (con el
+ * número en coexistencia) sale en el MISMO segundo que el "hola" del cliente.
+ */
+export const SEGUNDOS_RESPUESTA_AUTOMATICA = 4;
+
+/**
+ * ¿Este saliente es una respuesta automática del celular (saludo o ausencia de
+ * WhatsApp Business) y no una persona escribiendo?
+ *
+ * Caso real, Epazote 01/10/2026 7:51: el saludo "Epazote cocina de origen…"
+ * salió en el mismo segundo que el "Buen día" del cliente. Como no trae
+ * marketplace.appId, contaba como persona del equipo y el bot se calló 2 horas;
+ * el cliente pidió reserva, nadie le contestó en 8 horas y se fue a otro
+ * restaurante. Nadie escribe a mano una respuesta en 4 segundos.
+ */
+export function esRespuestaAutomatica(salienteMs: number, entrantesMs: number[]): boolean {
+  return entrantesMs.some((e) => salienteMs >= e && salienteMs - e <= SEGUNDOS_RESPUESTA_AUTOMATICA * 1000);
+}
+
 export interface MensajeDePersona {
   texto: string;
   ts: string;
@@ -56,6 +77,10 @@ export async function mensajesDePersona(
     .map((m) => norm(m.content));
 
   const msgs = await getConversationMessages(contactId, 30);
+  const entrantes = msgs
+    .filter((m) => m.direction === 'inbound')
+    .map((m) => fechaGhlAMs(m.dateAdded, tz))
+    .filter((t) => !isNaN(t));
   return msgs
     .filter((m) => {
       if (m.direction !== 'outbound') return false;
@@ -65,6 +90,7 @@ export async function mensajesDePersona(
       if (!body) return false;
       const t = fechaGhlAMs(m.dateAdded, tz);
       if (isNaN(t) || t < desde) return false;
+      if (esRespuestaAutomatica(t, entrantes)) return false;
       const n = norm(body);
       // El bot parte sus respuestas en burbujas: cada burbuja es un pedazo de
       // un mensaje guardado completo.

@@ -53,7 +53,12 @@ export const SEGUNDOS_RESPUESTA_AUTOMATICA = 4;
  * restaurante. Nadie escribe a mano una respuesta en 4 segundos.
  */
 export function esRespuestaAutomatica(salienteMs: number, entrantesMs: number[]): boolean {
-  return entrantesMs.some((e) => salienteMs >= e && salienteMs - e <= SEGUNDOS_RESPUESTA_AUTOMATICA * 1000);
+  // En las DOS direcciones: los mensajes que manda la app del celular llegan a
+  // GHL con la hora truncada al segundo ("22:14:47.000Z") y el del cliente con
+  // milisegundos ("22:14:47.919Z"), así que el saludo queda registrado ANTES
+  // del mensaje que lo provocó (hasta 2.5 s antes, medido el 04/10/2026). La
+  // primera versión solo aceptaba salientes posteriores y no atrapaba ninguno.
+  return entrantesMs.some((e) => Math.abs(salienteMs - e) <= SEGUNDOS_RESPUESTA_AUTOMATICA * 1000);
 }
 
 export interface MensajeDePersona {

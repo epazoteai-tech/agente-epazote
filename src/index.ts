@@ -41,6 +41,13 @@ app.get('/health', (_req, res) => {
 
 app.use('/webhook', webhookRouter);
 
+// Menús en PDF que el bot le manda al cliente por WhatsApp. SIN PIN a propósito:
+// los abre el cliente desde su celular. Solo material público del restaurante.
+app.use(
+  '/menu',
+  express.static(path.join(__dirname, '..', 'public', 'menu'), { maxAge: '1h', index: false, dotfiles: 'deny' })
+);
+
 // Endpoint de admin para debugging — listar las últimas conversaciones.
 //
 // Va detrás de un token porque devuelve datos de contactos reales (nombre e id

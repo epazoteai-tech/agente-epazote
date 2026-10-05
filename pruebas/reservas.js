@@ -101,6 +101,8 @@ const confirmaciones = [
   ['Puedes llegar sin reserva, con gusto te recibimos. La reserva nada más te asegura la mesa.', null],
   ['Tenemos actividades para niños los fines de semana, pinta caritas y juegos.', null],
   ['Qué gusto, que lo disfruten mucho! 😊', null],
+  ['Ya le avisé al equipo para que la liberen. Cuando quieran venir, aquí los esperamos con gusto 😊', null],
+  ['Va, sin presión. Si se animan otro día, los esperamos.', null],
   // SÍ quitar
   ['Listo! Tu mesa está confirmada para el sábado a las 9 ✅ Te esperamos.', `Listo! ${R}`],
   ['Sí hay lugar el sábado a las 9, a nombre de quién la registro?', `${R} A nombre de quién la registro?`],

@@ -240,6 +240,11 @@ const CONFIRMA_MESA = new RegExp(
 // "Te esperamos" suena a confirmación en una afirmación, no en una pregunta
 // ("A qué hora los esperamos?" no promete nada).
 const TE_ESPERAMOS = /\b(te|los|las|les) esperamos\b/i;
+// "Cuando quieran venir, aquí los esperamos" es una invitación abierta, no una
+// mesa confirmada: es la despedida correcta de una CANCELACIÓN. La red la
+// cambiaba por "el equipo te confirma", que ahí no tiene sentido (salió en la
+// batería del 04/10/2026 al acortar las respuestas).
+const INVITACION_ABIERTA = /\b(cuando|si)\b|otra (vez|ocasi[oó]n)|\bpronto\b|cuando gusten/i;
 
 const RESPALDO_CONFIRMACION = 'Eso te lo confirma el equipo en un momento por aquí mismo.';
 
@@ -269,7 +274,7 @@ export function quitarConfirmacionDeMesa(text: string): { text: string; quitadas
     const pregunta = ES_PREGUNTA.test(limpia);
     const fuerte = CONFIRMA_MESA.exec(limpia);
 
-    if (!fuerte && !(TE_ESPERAMOS.test(limpia) && !pregunta)) return oracion;
+    if (!fuerte && !(TE_ESPERAMOS.test(limpia) && !pregunta && !INVITACION_ABIERTA.test(limpia))) return oracion;
     quitadas.push(limpia);
 
     if (fuerte && pregunta) {

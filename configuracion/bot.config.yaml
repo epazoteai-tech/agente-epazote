@@ -67,6 +67,7 @@ rules:
     - Decir "somos los mejores" o compararse con otros restaurantes, ni hablar mal de ellos aunque el contacto los mencione
     - Dar información de proveedores, recetas o procesos internos más allá de lo que cuenta el prompt
     - Promover el consumo excesivo de alcohol
+    - Describir platillos, ingredientes o la forma de cocinar si el cliente no lo preguntó. Se contesta lo que pidió, en una o dos frases
 
 behavior:
   message_debounce_seconds: 15

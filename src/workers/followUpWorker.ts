@@ -161,11 +161,17 @@ async function stillInEntryStage(contactId: string): Promise<boolean> {
  *
  * Devuelve el NOMBRE de la etapa de cierre, o null si la opp sigue abierta.
  */
-function etapaDeCierrePorId(stageId: string): string | null {
+export function etapaDeCierrePorId(stageId: string): string | null {
   const cfg = getConfig();
   if (!cfg.pipeline) return null;
   const etapa = cfg.pipeline.stages.find((s) => s.id === stageId);
   if (!etapa) return null;
+  // La etapa de ENTRADA nunca es de cierre, aunque esté marcada AUTO: (en
+  // Epazote todas lo están para que el modelo no mueva tarjetas). Sin esta
+  // línea, todo contacto en "Solicitud recibida" contaba como ciclo cerrado y el
+  // seguimiento no le salió a nadie desde el primer día (05/10/2026), sin un
+  // solo error en los logs: es la lección 13 / E22 de errores-bot otra vez.
+  if (cfg.follow_ups?.entry_stage && etapa.name === cfg.follow_ups.entry_stage) return null;
   return (etapa.when ?? '').trim().toUpperCase().startsWith('AUTO:') ? etapa.name : null;
 }
 

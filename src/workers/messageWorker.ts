@@ -46,9 +46,10 @@ import {
   detectAttendanceConfirmation,
   cancelarFollowUpsPendientes,
 } from '../services/follow-up';
-import { contactoBloqueadoAsync } from '../blocklist';
+import { contactoBloqueadoAsync, bloquearContacto } from '../blocklist';
+import { esMensajeRepetidoDeBot, REPETICIONES_DE_BOT } from '../loop-guard';
 import { pareceNombreReal } from '../nombres';
-import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu } from '../services/reservas';
+import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu, quitarCalificativos } from '../services/reservas';
 import { guardarReservaDelBot } from '../services/mesa';
 
 /**
@@ -1792,6 +1793,16 @@ export async function startMessageWorker(concurrency = 5) {
 
       const history: ChatMessage[] = conversation.messages ?? [];
 
+      // Otro bot repitiendo su mensaje (ver loop-guard.ts): a la lista negra
+      // y en silencio, antes de gastar un token. Cada vuelta de un loop así
+      // cuesta una llamada al modelo y, aquí, una escalación al equipo.
+      if (esMensajeRepetidoDeBot(history, messageToProcess)) {
+        await bloquearContacto(contactId, 'mensaje idéntico repetido: otro bot').catch(() => {});
+        await cancelarFollowUpsPendientes(contactId).catch(() => {});
+        console.warn(`[loop-guard] mismo mensaje repetido ${REPETICIONES_DE_BOT}+ veces, contacto a lista negra | contact=${contactId}`);
+        return;
+      }
+
       // 2. Procesar attachments pendientes
       // - Imágenes y PDFs van como bloques a Claude Vision
       // - Audios se transcriben con Whisper y reemplazan el placeholder
@@ -1974,6 +1985,11 @@ export async function startMessageWorker(concurrency = 5) {
         if (q.quitadas.length) {
           console.warn(`[reservas] se quitó una confirmación de mesa | contact=${contactId} quitado=${JSON.stringify(q.quitadas)}`);
           replyText = q.text;
+        }
+        const cal = quitarCalificativos(replyText);
+        if (cal.quitados.length) {
+          console.warn(`[reservas] calificativo quitado | contact=${contactId} quitado=${JSON.stringify(cal.quitados)}`);
+          replyText = cal.text;
         }
         const m = asegurarMenu(messageToProcess, replyText, getConfig().reservations?.menus ?? []);
         if (m.agregado) {

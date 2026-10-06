@@ -239,7 +239,7 @@ const CONFIRMA_MESA = new RegExp(
 );
 // "Te esperamos" suena a confirmación en una afirmación, no en una pregunta
 // ("A qué hora los esperamos?" no promete nada).
-const TE_ESPERAMOS = /\b(te|los|las|les) esperamos\b/i;
+const TE_ESPERAMOS = /\b(te|los|las|les) esperamos\b|\bnos vemos\b/i;
 // "Cuando quieran venir, aquí los esperamos" es una invitación abierta, no una
 // mesa confirmada: es la despedida correcta de una CANCELACIÓN. La red la
 // cambiaba por "el equipo te confirma", que ahí no tiene sentido (salió en la
@@ -355,4 +355,28 @@ export function asegurarMenu(
   // saludo y a la respuesta del modelo.
   const bloque = 'Aquí está el menú:\n' + menus.map((m) => `${m.nombre}: ${m.url}`).join('\n');
   return { text: respuesta.trim() ? `${respuesta.trim()}\n\n${bloque}` : bloque, agregado: true };
+}
+
+
+// ─── Calificativos que la marca no usa ─────────────────────────────────────────
+// La voz de Epazote describe y deja que el cliente concluya: nunca "somos los
+// mejores". El prompt lo prohíbe y aun así salió "el machacado es de los
+// favoritos" y "es una delicia" (05/10/2026, con la regla ya desplegada). Lo
+// que se puede escribir como regex no se le pide al modelo (E128).
+const CALIFICATIVO = new RegExp(
+  '\\s+(?:es|son|está|están)\\s+' +
+    '(?:(?:uno|una)\\s+de\\s+(?:los|las)\\s+|de\\s+(?:los|las)\\s+)?' +
+    '(?:favorit[oa]s?|consentid[oa]s?|más\\s+pedid[oa]s?|lo\\s+que\\s+más\\s+piden|una\\s+delicia|increíble|delicios[oa]s?|buenísim[oa]s?|de\\s+lo\\s+mejor|(?:platos?|platillos?)\\s+que\\s+más\\s+[^\\s:.,!?]+)' +
+    '[^.!?:\\n]*',
+  'gi'
+);
+
+/** Quita "es de los favoritos…", "es una delicia…", "de lo mejor…" y deja el resto. */
+export function quitarCalificativos(text: string): { text: string; quitados: string[] } {
+  const quitados: string[] = [];
+  const salida = text.replace(CALIFICATIVO, (m) => {
+    quitados.push(m.trim());
+    return '';
+  });
+  return { text: salida, quitados };
 }

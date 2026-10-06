@@ -700,10 +700,12 @@ export async function getClaudeResponse(
   // lo que escribió al cerrar, descartando el preámbulo que el cierre ya
   // repite para no decir lo mismo dos veces. Si no hubo cierre (corte de API,
   // max_tokens), el preámbulo solo es mejor que el silencio.
-  const piezas = [...preambulos, finalText]
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .filter((t, i, todas) => !todas.slice(i + 1).some((otra) => otra.includes(t)));
+  const piezas = quitarAvisosRepetidos(
+    [...preambulos, finalText]
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .filter((t, i, todas) => !todas.slice(i + 1).some((otra) => otra.includes(t)))
+  );
   const completo = piezas.join('\n\n');
 
   const { text: cleanText, removed } = stripReasoning(completo);
@@ -1080,4 +1082,36 @@ const HANDOFF = new RegExp(
 
 export function pareceHandoff(text: string): boolean {
   return HANDOFF.test(text);
+}
+
+
+// Una oración que avisa que el equipo ya está enterado / que alguien escribe.
+const AVISO_AL_EQUIPO = /(avis[eé]|\baviso\b|el equipo ya|ya (lo|la) tiene|ya (lo|la) sabe|en el radar|lo van a revisar|(te|le) (escribe|contacta|confirma)n?\b)/i;
+const ORACIONES = /[^.!?\n]+[.!?]*\s*/g;
+
+/**
+ * Cuando el modelo escribe ANTES de usar una herramienta y otra vez DESPUÉS, el
+ * aviso al equipo sale dos veces con otras palabras: "Ya lo tiene el equipo 👍 ⏎
+ * El equipo ya lo tiene y lo van a revisar" (Epazote, 05/10/2026, en cada
+ * escalación). El filtro de arriba solo quita repeticiones idénticas. Aquí, entre
+ * todas las piezas del turno, el aviso se queda la PRIMERA vez y las oraciones
+ * de aviso que vienen después se quitan; si una pieza se queda vacía, sale.
+ * Solo aplica cuando hay más de una pieza (o sea, hubo herramienta de por medio).
+ */
+export function quitarAvisosRepetidos(piezas: string[]): string[] {
+  if (piezas.length < 2) return piezas;
+  let yaAviso = false;
+  return piezas
+    .map((p) =>
+      (p.match(ORACIONES) ?? [p])
+        .filter((o) => {
+          if (!AVISO_AL_EQUIPO.test(o)) return true;
+          if (yaAviso) return false;
+          yaAviso = true;
+          return true;
+        })
+        .join('')
+        .trim()
+    )
+    .filter(Boolean);
 }

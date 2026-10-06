@@ -9,7 +9,7 @@
  * inferido por la hora y el formato del resumen de la notificación.
  */
 const path = require('path');
-const { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, fechaLarga, pideMenu, asegurarMenu } = require(path.join(__dirname, '..', 'dist', 'services', 'reservas.js'));
+const { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, fechaLarga, pideMenu, asegurarMenu, quitarCalificativos } = require(path.join(__dirname, '..', 'dist', 'services', 'reservas.js'));
 
 const CFG = {
   timezone: 'America/Monterrey',
@@ -85,6 +85,23 @@ check('si no pidió el menú, no se toca', asegurarMenu('mesa para 4 el sábado'
 check('"la carta" cuenta', pideMenu('me mandas la carta?'));
 check('"tienen menú infantil?" es pregunta, no petición del PDF', pideMenu('tienen menú infantil?') === false);
 check('"me pasas el menú infantil" sí lo pide', pideMenu('me pasas el menú infantil?'));
+
+// Calificativos reales del 04 y 05/10/2026
+for (const [ent, esp] of [
+  ['Hola, qué gusto saludarte! Soy la asistente digital de Epazote. Claro, el machacado es de los favoritos en los desayunos!', 'Hola, qué gusto saludarte! Soy la asistente digital de Epazote. Claro, el machacado!'],
+  ['Claro, el machacado es una delicia!', 'Claro, el machacado!'],
+  ['Claro, el cabrito con mole blanco es de lo mejor de la carta nueva.', 'Claro, el cabrito con mole blanco.'],
+  ['El *Cabrito prensado* es de los platos que más enamoran: cocinado lento con xoconostles.', 'El *Cabrito prensado*: cocinado lento con xoconostles.'],
+  ['El *Cabrito prensado*, cocinado lento en salsa de xoconostles con mole blanco artesanal.', null],
+  ['Los desayunos fuertes van de $179 a $354.', null],
+  ['Qué gusto, que lo disfruten mucho! 😊', null],
+]) {
+  const o = quitarCalificativos(ent).text;
+  check('calificativo: ' + ent.slice(0, 48), o === (esp ?? ent), o);
+}
+// "Nos vemos el domingo" a una mesa que nadie ha confirmado (05/10/2026)
+check('"Nos vemos el domingo!" se quita', quitarConfirmacionDeMesa('Nos vemos el domingo! 😊').quitadas.length === 1);
+check('"Si se animan, nos vemos pronto" no se toca', quitarConfirmacionDeMesa('Si se animan, nos vemos pronto 😊').quitadas.length === 0);
 
 // Origen de campaña: primer mensaje del contacto en la sesión actual.
 const h = (role, content, ts) => ({ role, content, ts });

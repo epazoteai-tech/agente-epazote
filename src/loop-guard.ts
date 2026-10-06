@@ -104,3 +104,36 @@ export function evaluarLoop(
 
   return { turnCount, fastReplies, fastReplyMarker, motivoBloqueo };
 }
+
+/**
+ * Otro bot que repite su mensaje: el mismo texto largo, por N-ésima vez en
+ * pocos minutos, aunque se le haya contestado distinto cada vez.
+ *
+ * Caso real (Epazote, 05/10/2026 10:43–10:59): el bot de Mercado Pago mandó
+ * "¡Hola! ¿En qué puedo ayudarte con tu cuenta de Mercado Pago?" cada ~20 s y el
+ * nuestro le contestó unas 25 veces. Las señales de arriba no lo vieron: no
+ * contestaba en menos de 5 s (`fast_reply_seconds`) y en 16 minutos no llegó a
+ * `max_turns`. Una persona no repite palabra por palabra el mismo mensaje largo
+ * después de recibir respuesta; un "ok" o un "gracias" sí, por eso el mínimo de
+ * caracteres.
+ */
+export const REPETICIONES_DE_BOT = 4;
+export const VENTANA_REPETICION_MIN = 30;
+export const LARGO_MINIMO_REPETICION = 15;
+
+export function esMensajeRepetidoDeBot(
+  history: { role: string; content: string; ts: string }[],
+  nuevo: string,
+  ahoraMs: number = Date.now()
+): boolean {
+  const norm = (t: string) => (t ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const n = norm(nuevo);
+  if (n.length < LARGO_MINIMO_REPETICION) return false;
+  const desde = ahoraMs - VENTANA_REPETICION_MIN * 60 * 1000;
+  const previas = history.filter((m) => {
+    if (m.role !== 'user') return false;
+    const t = Date.parse(m.ts);
+    return !isNaN(t) && t >= desde && norm(m.content) === n;
+  }).length;
+  return previas + 1 >= REPETICIONES_DE_BOT;
+}

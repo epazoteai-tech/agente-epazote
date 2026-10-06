@@ -9,7 +9,7 @@
  * inferido por la hora y el formato del resumen de la notificación.
  */
 const path = require('path');
-const { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, fechaLarga } = require(path.join(__dirname, '..', 'dist', 'services', 'reservas.js'));
+const { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, fechaLarga, pideMenu, asegurarMenu } = require(path.join(__dirname, '..', 'dist', 'services', 'reservas.js'));
 
 const CFG = {
   timezone: 'America/Monterrey',
@@ -73,6 +73,18 @@ for (const [f, esperado] of [['2026-10-03', 'sábado 3 de octubre'], ['2026-12-3
   if (!ok) fallas++;
   console.log(`${ok ? '✅' : '❌'} fecha larga: ${f} → "${fechaLarga(f)}"`);
 }
+
+const check = (n, ok, extra = '') => { if (!ok) fallas++; console.log(`${ok ? '✅' : '❌'} ${n}${ok ? '' : ' → ' + extra}`); };
+// Menú en PDF: caso real del 05/10/2026 (anuncio + "Menú" y el bot no lo mandó)
+const MENUS = [{ nombre: 'Desayunos', url: 'https://x/menu/desayunos.pdf' }, { nombre: 'Comidas y cenas', url: 'https://x/menu/comidas-y-cenas.pdf' }];
+const caso = '*Headline:* Reserva Tu Mesa\n*Source URL:* https://fb.me/7moX9t70T\n\nHola! Vi el video del machacado epazote y quisiera reservar una mesa\nMenú';
+const r1 = asegurarMenu(caso, 'Hola! Soy la asistente digital de Epazote. Claro, el machacado! Para qué día te dejo la mesa?', MENUS);
+check('pidió "Menú" y no venía la liga: se agrega al final', r1.agregado && r1.text.startsWith('Hola! Soy la asistente') && r1.text.includes('desayunos.pdf') && r1.text.includes('comidas-y-cenas.pdf'), r1.text);
+check('si la respuesta ya trae la liga, no se duplica', asegurarMenu('me pasas el menu?', 'Claro: https://x/menu/desayunos.pdf', MENUS).agregado === false);
+check('si no pidió el menú, no se toca', asegurarMenu('mesa para 4 el sábado', 'A nombre de quién?', MENUS).agregado === false);
+check('"la carta" cuenta', pideMenu('me mandas la carta?'));
+check('"tienen menú infantil?" es pregunta, no petición del PDF', pideMenu('tienen menú infantil?') === false);
+check('"me pasas el menú infantil" sí lo pide', pideMenu('me pasas el menú infantil?'));
 
 // Origen de campaña: primer mensaje del contacto en la sesión actual.
 const h = (role, content, ts) => ({ role, content, ts });

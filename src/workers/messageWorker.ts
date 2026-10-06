@@ -48,7 +48,7 @@ import {
 } from '../services/follow-up';
 import { contactoBloqueadoAsync } from '../blocklist';
 import { pareceNombreReal } from '../nombres';
-import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro } from '../services/reservas';
+import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu } from '../services/reservas';
 import { guardarReservaDelBot } from '../services/mesa';
 
 /**
@@ -1974,6 +1974,11 @@ export async function startMessageWorker(concurrency = 5) {
         if (q.quitadas.length) {
           console.warn(`[reservas] se quitó una confirmación de mesa | contact=${contactId} quitado=${JSON.stringify(q.quitadas)}`);
           replyText = q.text;
+        }
+        const m = asegurarMenu(messageToProcess, replyText, getConfig().reservations?.menus ?? []);
+        if (m.agregado) {
+          console.warn(`[reservas] pidió el menú y la respuesta no lo traía — se agregó | contact=${contactId}`);
+          replyText = m.text;
         }
         if (!turn.reservaRegistrada && !turn.escalado && diceQueRegistro(replyText)) {
           const at = Date.parse(String((await getMeta(contactId)).reserva_registrada_at ?? ''));

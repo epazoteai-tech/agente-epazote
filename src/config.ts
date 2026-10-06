@@ -253,6 +253,8 @@ const ReservationsSchema = z
       .default([]),
     // Opcional: etapa del pipeline a la que se mueve la opportunity al registrar.
     stage: z.string().optional(),
+    // Opcional: menús en PDF que el bot manda por liga (ver asegurarMenu).
+    menus: z.array(z.object({ nombre: z.string().min(1), url: z.string().url() })).default([]),
     fields: z.object({
       fecha: z.string().min(1),
       hora: z.string().min(1),

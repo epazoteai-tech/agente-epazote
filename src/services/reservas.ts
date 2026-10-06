@@ -323,3 +323,36 @@ export function mensajeDeOrigen(
   }
   return origen.replace(/\s+/g, ' ').slice(0, 300);
 }
+
+// ─── Menú en PDF ──────────────────────────────────────────────────────────────
+
+/** El cliente pidió ver el menú o la carta (no "menú infantil" a secas, eso es una pregunta). */
+export function pideMenu(texto: string): boolean {
+  const t = (texto ?? '').toLowerCase();
+  // Sin \b: en JS no reconoce la "ú" como letra y "Menú" (el caso real) nunca
+  // coincidía. Límites de palabra explícitos, con acentos.
+  if (!/(^|[^a-záéíóúüñ])(men[uú]s?|la carta)(?=$|[^a-záéíóúüñ])/.test(t)) return false;
+  // "tienen menú infantil?" es una pregunta sobre los Epazotitos, no una petición del PDF.
+  if (/men[uú] infantil/.test(t) && !/(p[aá]s|manda|env[ií]a|ver|tienes el|me das)/.test(t)) return false;
+  return true;
+}
+
+/**
+ * Si el cliente pidió el menú y la respuesta no trae ninguna liga, se agregan
+ * al final, cada una en su renglón. Caso real (Epazote, 05/10/2026): el cliente
+ * llegó del anuncio y escribió "Menú" 8 segundos después; el bot contestó solo
+ * lo de la reserva y nunca mandó el menú. Una liga que el cliente necesita no
+ * se le encarga a la memoria del modelo (E63 de errores-bot).
+ */
+export function asegurarMenu(
+  textoCliente: string,
+  respuesta: string,
+  menus: { nombre: string; url: string }[]
+): { text: string; agregado: boolean } {
+  if (!menus.length || !pideMenu(textoCliente)) return { text: respuesta, agregado: false };
+  if (menus.some((m) => respuesta.includes(m.url))) return { text: respuesta, agregado: false };
+  // Al FINAL (E138): lo que agrega el código no le gana el primer renglón al
+  // saludo y a la respuesta del modelo.
+  const bloque = 'Aquí está el menú:\n' + menus.map((m) => `${m.nombre}: ${m.url}`).join('\n');
+  return { text: respuesta.trim() ? `${respuesta.trim()}\n\n${bloque}` : bloque, agregado: true };
+}

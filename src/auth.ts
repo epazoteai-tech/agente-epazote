@@ -115,7 +115,60 @@ const TECHO_BLOQUEO_SEG = 300;
  */
 const bloqueoLocal = new Map<string, number>();
 
-function llaveDe(req: Request): string {
+/**
+ * Rangos publicados por Cloudflare (cloudflare.com/ips). Con el dominio
+ * epazote.sellerstudio.mx detrás del proxy de Cloudflare, `req.ip` es el nodo
+ * de Cloudflare y no el cliente: todos los visitantes compartían la misma
+ * llave y unas cuantas visitas bloqueaban a todo el equipo (06/10/2026).
+ */
+const CLOUDFLARE_V4: Array<[number, number]> = [
+  '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22',
+  '141.101.64.0/18', '108.162.192.0/18', '190.93.240.0/20', '188.114.96.0/20',
+  '197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+  '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+].map((c) => {
+  const [ip, bits] = c.split('/');
+  return [ipv4ANumero(ip) ?? 0, Number(bits)];
+});
+
+/** Prefijos IPv6 de Cloudflare como [primeros 32 bits, largo del prefijo]. */
+const CLOUDFLARE_V6: Array<[number, number]> = [
+  [0x2400cb00, 32], [0x26064700, 32], [0x2803f800, 32], [0x2405b500, 32],
+  [0x24058100, 32], [0x2a0698c0, 29], [0x2c0ff248, 32],
+];
+
+function ipv4ANumero(ip: string): number | null {
+  const partes = ip.split('.');
+  if (partes.length !== 4) return null;
+  let n = 0;
+  for (const p of partes) {
+    const v = Number(p);
+    if (!/^\d{1,3}$/.test(p) || v > 255) return null;
+    n = n * 256 + v;
+  }
+  return n;
+}
+
+export function esDeCloudflare(ip: string | undefined): boolean {
+  if (!ip) return false;
+  const v4 = ipv4ANumero(ip.replace(/^::ffff:/i, ''));
+  if (v4 !== null) {
+    return CLOUDFLARE_V4.some(([red, bits]) => Math.floor(v4 / 2 ** (32 - bits)) === Math.floor(red / 2 ** (32 - bits)));
+  }
+  const hextetos = ip.toLowerCase().split(':');
+  if (hextetos.length < 3) return false;
+  const alto = parseInt(hextetos[0] || '0', 16) * 0x10000 + parseInt(hextetos[1] || '0', 16);
+  return CLOUDFLARE_V6.some(([red, bits]) => Math.floor(alto / 2 ** (32 - bits)) === Math.floor(red / 2 ** (32 - bits)));
+}
+
+/**
+ * `cf-connecting-ip` solo se cree si la petición viene de verdad de un nodo de
+ * Cloudflare. Por el dominio de Railway cualquiera podría mandar ese header
+ * con un valor distinto en cada intento y saltarse el freno.
+ */
+export function llaveDe(req: Pick<Request, 'ip' | 'header'>): string {
+  const cliente = req.header('cf-connecting-ip');
+  if (cliente && esDeCloudflare(req.ip)) return cliente.trim();
   return req.ip ?? 'desconocida';
 }
 
@@ -180,6 +233,12 @@ async function revisar(
     return { estado: 'bloqueado', esperaSeg: Math.ceil((bloqueadoHasta - Date.now()) / 1000) };
   }
   if (bloqueadoHasta) bloqueoLocal.delete(llave);
+
+  // Sin PIN no hay intento: abrir la página por primera vez solo muestra la
+  // pantalla de PIN. Contarlo como fallo bloqueaba a quien recargaba la página
+  // unas veces antes de teclear nada. No le regala nada a un atacante: sin
+  // mandar un PIN no aprende nada.
+  if (!pinDeLaPeticion(req)) return { estado: 'invalido', esperaSeg: 0 };
 
   if (pinValido(req)) {
     // Sin rastro local de fallos no hay nada que limpiar, y este es el camino

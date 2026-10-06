@@ -147,9 +147,9 @@ reservations:
   # mandó. Si cambia un PDF, cambia el archivo; si cambia la liga, cambia aquí.
   menus:
     - nombre: Desayunos
-      url: https://agente-epazote-production.up.railway.app/menu/desayunos.pdf
+      url: https://epazote.sellerstudio.mx/menu/desayunos.pdf
     - nombre: Comidas y cenas
-      url: https://agente-epazote-production.up.railway.app/menu/comidas-y-cenas.pdf
+      url: https://epazote.sellerstudio.mx/menu/comidas-y-cenas.pdf
   fields:
     # "sábado 3 de octubre": lo lee el cliente en la plantilla de recordatorio.
     fecha: XA4CUd13njMLTVRhb3ZL

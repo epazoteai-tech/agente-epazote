@@ -360,7 +360,7 @@
 
   function tarjeta(r) {
     var nombre = r.nombre || (r.canal === 'walk-in' ? 'Walk-in' : 'Sin nombre');
-    var meta = (r.personas ? r.personas + (r.personas === 1 ? ' persona' : ' personas') : 'Personas por definir') + (r.telefono ? ' · ' + esc(r.telefono) : '');
+    var meta = (r._verFecha ? (r.fecha ? fechaBonita(r.fecha) : 'Sin día') + ' · ' : '') + (r.personas ? r.personas + (r.personas === 1 ? ' persona' : ' personas') : 'Personas por definir') + (r.telefono ? ' · ' + esc(r.telefono) : '');
     return '<div class="tarjeta' + (r._pend ? ' pendiente' : '') + '" data-id="' + r.id + '">' +
       '<div class="arriba"><div class="hora">' + (r.hora ? horaHtml(r.hora) : '—') + '</div>' +
       '<div class="quien"><b>' + esc(nombre) + '</b><div class="meta">' + meta + '</div><div class="chips">' + chips(r) + '</div></div>' +
@@ -395,14 +395,15 @@
     var hoy = estado.hoy || new Date().toISOString().slice(0, 10);
     return Promise.all([
       api('/reservas?desde=' + sumarDias(hoy, 1) + '&hasta=' + sumarDias(hoy, 14)),
-      api('/reservas/sin-fecha')
+      api('/reservas/por-atender')
     ]).then(function (rs) {
-      var d = rs[0], sinDia = rs[1].reservas;
+      var d = rs[0], sinDia = rs[1].reservas, enCola = {};
+      sinDia.forEach(function (r) { r._verFecha = true; enCola[r.id] = 1; });
       var porFecha = {};
-      d.reservas.filter(function (r) { return r.estado !== 'cancelada'; }).forEach(function (r) { (porFecha[r.fecha] = porFecha[r.fecha] || []).push(r); });
+      d.reservas.filter(function (r) { return r.estado !== 'cancelada' && !enCola[r.id]; }).forEach(function (r) { (porFecha[r.fecha] = porFecha[r.fecha] || []).push(r); });
       var fechas = Object.keys(porFecha).sort();
-      estado.reservas = sinDia.concat(d.reservas);
-      var h = sinDia.length ? seccion('Atención humana · sin día', sinDia) : '';
+      estado.reservas = sinDia.concat(d.reservas.filter(function (r) { return !enCola[r.id]; }));
+      var h = sinDia.length ? seccion('Atención humana · por confirmar', sinDia) : '';
       h += fechas.length ? fechas.map(function (f) { return seccion(fechaBonita(f), porFecha[f]); }).join('') : (sinDia.length ? '' : '<div class="vacio vacio-icono">Sin reservas en los próximos 14 días.</div>');
       $('#lista-proximas').innerHTML = h;
     });

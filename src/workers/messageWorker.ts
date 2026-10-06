@@ -49,8 +49,8 @@ import {
 import { contactoBloqueadoAsync, bloquearContacto } from '../blocklist';
 import { esMensajeRepetidoDeBot, REPETICIONES_DE_BOT } from '../loop-guard';
 import { pareceNombreReal } from '../nombres';
-import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu, quitarCalificativos, minutosDe, turnoDe } from '../services/reservas';
-import { guardarReservaDelBot, guardarReservaEscalada, anuncioDelContacto } from '../services/mesa';
+import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu, quitarCalificativos } from '../services/reservas';
+import { guardarReservaDelBot, datosParaLaMesa, guardarEscaladaEnMesa } from '../services/mesa';
 
 /**
  * Estado compartido entre las tools de UN mismo turno (un job del worker).
@@ -1313,77 +1313,6 @@ export async function handleCancelarCita(  // exportada solo para pruebas
       ? 'Cita anterior cancelada. Confírmale al contacto en UN solo mensaje la nueva fecha y que la anterior quedó cancelada.'
       : 'Cita cancelada. Confírmaselo con calidez y déjale la puerta abierta para retomarla.',
   });
-}
-
-/**
- * Teléfono, anuncio y mensaje de origen del contacto para su fila en la Mesa
- * de Control. Best-effort: lo que no se pueda leer queda vacío. De paso le pone
- * nombre al contacto de GHL si todavía no tiene uno real.
- */
-async function datosParaLaMesa(
-  contactId: string,
-  nombre: string,
-  etiqueta: string
-): Promise<{ telefono: string; anuncio: ReturnType<typeof anuncioDelContacto>; origen: string }> {
-  let telefono = '';
-  let anuncio: ReturnType<typeof anuncioDelContacto> = null;
-  try {
-    const contacto = await getContact(contactId);
-    telefono = contacto?.phone ?? '';
-    anuncio = anuncioDelContacto(contacto);
-    if (nombre && !pareceNombreReal(contacto?.firstName)) await updateContactName(contactId, nombre);
-  } catch (err) {
-    console.warn(`[tool:${etiqueta}] getContact/updateContactName failed: ${(err as Error).message}`);
-  }
-
-  // Origen de campaña: el mensaje con el que abrió la sesión (texto
-  // precargado del wa.link del creativo).
-  let origen = '';
-  try {
-    const r = await db.query(`SELECT messages, phone FROM conversations WHERE contact_id = $1`, [contactId]);
-    origen = mensajeDeOrigen((r.rows[0]?.messages as ChatMessage[]) ?? []);
-    telefono = telefono || r.rows[0]?.phone || '';
-  } catch (err) {
-    console.warn(`[tool:${etiqueta}] no se pudo leer el origen: ${(err as Error).message}`);
-  }
-  return { telefono, anuncio, origen };
-}
-
-/**
- * Escalación de una mesa (grupo grande, evento, reserva que no se pudo
- * registrar): queda en la Mesa de Control como solicitud para que el equipo la
- * vea en Próximas y la confirme desde ahí. Se toma solo lo que el modelo pasó
- * y se ve válido; lo demás queda vacío para que el host lo complete.
- */
-async function guardarEscaladaEnMesa(input: Record<string, unknown>, contactId: string, motivo: string): Promise<void> {
-  const res = getConfig().reservations;
-  if (!res || input.es_reserva !== true) return;
-  const txt = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
-  const fecha = /^\d{4}-\d{2}-\d{2}$/.test(txt(input.fecha)) && !isNaN(Date.parse(txt(input.fecha))) ? txt(input.fecha) : null;
-  const horaCruda = txt(input.hora);
-  const minutos = /^\d{1,2}:\d{2}$/.test(horaCruda) ? minutosDe(horaCruda) : null;
-  const hora = minutos !== null ? horaCruda.padStart(5, '0') : null;
-  const p = typeof input.personas === 'number' ? input.personas : parseInt(txt(input.personas), 10);
-  const personas = Number.isInteger(p) && p > 0 && p < 1000 ? p : null;
-  const nombre = txt(input.nombre).replace(/\s+/g, ' ');
-  const { telefono, anuncio, origen } = await datosParaLaMesa(contactId, nombre, 'escalar_a_humano');
-  const m = await guardarReservaEscalada(
-    {
-      contactId,
-      nombre,
-      telefono,
-      fecha,
-      hora,
-      personas,
-      ocasion: txt(input.ocasion),
-      turno: minutos !== null ? turnoDe(minutos, res) : '',
-      origen,
-      motivo,
-      anuncio,
-    },
-    res.timezone
-  );
-  console.log(`[mesa] escalada ${m.accion} id=${m.id} | contact=${contactId} fecha=${fecha ?? '-'} personas=${personas ?? '-'}`);
 }
 
 async function handleEscalarAHumano(

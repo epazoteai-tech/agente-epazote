@@ -12,7 +12,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../db/client';
 import { getConfig } from '../config';
 import { minutosDe, turnoDe } from '../services/reservas';
-import { campanaDeOrigen, embudo, gastoDelPeriodo, Campana } from '../services/mesa';
+import { campanaDeOrigen, embudo, gastoDelPeriodo, guardarEscaladaEnMesa, Campana } from '../services/mesa';
 import { capiConfigurado, verificarMeta, datasetDeLaWaba } from '../services/capi';
 import {
   findContactOpportunity,
@@ -141,17 +141,39 @@ mesaRouter.get(
 );
 
 /**
- * Mesas que el bot pasó a una persona sin día definido todavía (ej. "somos 15,
- * queremos ir un día de estos"). No caen en ningún día, así que Próximas las
- * pide aparte y las pone arriba.
+ * Mesas que el bot pasó a una persona y nadie ha confirmado: grupo grande,
+ * evento, reserva que no se pudo registrar. Próximas las pone arriba como cola
+ * de pendientes, tengan día o no y aunque sean para dentro de un mes (un
+ * evento de noviembre no cabe en los 14 días de Próximas).
  */
 mesaRouter.get(
-  '/reservas/sin-fecha',
+  '/reservas/por-atender',
   ah(async (_req, res) => {
     const { rows } = await db.query(
-      `${SELECT_RESERVAS} WHERE r.fecha IS NULL AND r.estado = 'solicitada' ORDER BY r.created_at DESC`
+      `${SELECT_RESERVAS}
+        WHERE r.escalada AND r.estado = 'solicitada' AND (r.fecha IS NULL OR r.fecha >= $1::date)
+        ORDER BY r.fecha NULLS FIRST, r.hora, r.created_at`,
+      [ahora().fecha]
     );
     res.json({ reservas: conCampana(rows, await campanas()) });
+  })
+);
+
+/**
+ * Carga a mano una mesa escalada de un contacto de GHL (las que se escalaron
+ * antes de que existiera el registro automático). Mismo camino que el bot.
+ */
+mesaRouter.post(
+  '/reservas/escalada',
+  ah(async (req, res) => {
+    const b = req.body ?? {};
+    if (typeof b.contact_id !== 'string' || !b.contact_id.trim()) {
+      res.status(400).json({ error: 'falta_contacto' });
+      return;
+    }
+    const motivo = typeof b.motivo === 'string' && b.motivo.trim() ? b.motivo.trim() : 'escalada a una persona';
+    const r = await guardarEscaladaEnMesa({ ...b, es_reserva: true }, b.contact_id.trim(), motivo);
+    res.status(r ? 200 : 400).json(r ? { ok: true, ...r } : { error: 'reservas_no_configuradas' });
   })
 );
 

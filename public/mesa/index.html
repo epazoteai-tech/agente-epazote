@@ -483,7 +483,7 @@
     var rg = rangoResumen();
     return api('/resumen?desde=' + rg.desde + '&hasta=' + rg.hasta).then(function (d) {
       var e = d.embudo, ticketGeneral = (function () { var m = 0, s = 0; d.ticketPorTurno.forEach(function (t) { m += t.mesas; s += t.mesas * (t.promedio || 0); }); return m ? s / m : null; })();
-      var h = '<p class="vacio">Del ' + fechaBonita(d.desde) + ' al ' + fechaBonita(d.hasta) + ' (' + d.dias + ' días)</p>';
+      var h = '<p class="vacio">Del ' + fechaBonita(d.desde) + ' al ' + fechaBonita(d.hasta) + ' (' + d.dias + ' días) · cuenta las reservas pedidas en esos días, aunque la mesa sea después</p>';
       h += '<div class="kpis"><div class="kpi"><span>Solicitudes del bot y teléfono</span><strong>' + e.solicitudes + '</strong></div>' +
         '<div class="kpi"><span>Show rate</span><strong>' + pct(e.showRate) + '</strong></div>' +
         '<div class="kpi"><span>Ticket promedio</span><strong>' + dinero(ticketGeneral) + '</strong></div>' +

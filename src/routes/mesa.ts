@@ -324,7 +324,16 @@ mesaRouter.get(
   '/resumen',
   ah(async (req, res) => {
     const { desde, hasta } = rango(req);
-    const { rows } = await db.query(`${SELECT_RESERVAS} WHERE r.fecha BETWEEN $1 AND $2`, [desde, hasta]);
+    // El periodo se cuenta por el día en que ENTRÓ la solicitud, no por el día
+    // de la mesa. Las reservas por anuncio casi siempre son para días después
+    // ("el domingo"): contadas por `fecha`, la del video de machacado pedida el
+    // 05/10 para el 11/10 no aparecía en "7 días" ni en Campañas (06/10/2026).
+    // Así cada periodo muestra lo que la pauta de ese periodo generó, y su
+    // llegada e ingreso se le suman cuando ocurren.
+    const { rows } = await db.query(
+      `${SELECT_RESERVAS} WHERE (r.created_at AT TIME ZONE $3)::date BETWEEN $1 AND $2`,
+      [desde, hasta, zona()]
+    );
     const camps = await campanas();
     const filas = conCampana(rows, camps);
     const dias = Math.round((Date.parse(hasta) - Date.parse(desde)) / 86_400_000) + 1;
@@ -368,8 +377,8 @@ mesaRouter.get(
               count(*) FILTER (WHERE c.capi_enviado_at IS NOT NULL AND r.ctwa_clid IS NOT NULL
                                  AND NOT COALESCE((c.capi_respuesta->>'respaldo_tienda')::boolean, false))::int AS por_clic
          FROM consumos c JOIN reservas r ON r.id = c.reserva_id
-        WHERE r.fecha BETWEEN $1 AND $2`,
-      [desde, hasta]
+        WHERE (r.created_at AT TIME ZONE $3)::date BETWEEN $1 AND $2`,
+      [desde, hasta, zona()]
     );
 
     res.json({

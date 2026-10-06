@@ -263,3 +263,32 @@ export async function verificarMeta(): Promise<{ ok: boolean; detalle: string } 
   }
   return { ok: false, detalle: `respuesta inesperada de Meta (HTTP ${res.status}): ${msg.slice(0, 200) || JSON.stringify(d).slice(0, 200)}` };
 }
+
+
+/**
+ * Diagnóstico de SOLO LECTURA: ¿qué dataset tiene ligado la cuenta de WhatsApp
+ * Business? Los eventos de Business Messaging (anuncios Click-to-WhatsApp) van
+ * al dataset de la WABA, que Meta liga desde la WABA y no desde la pantalla del
+ * Pixel (ahí solo aparece la cuenta publicitaria). GET no crea nada.
+ */
+export async function datasetDeLaWaba(): Promise<{ ok: boolean; detalle: string; datasetId?: string }> {
+  if (!wabaId()) return { ok: false, detalle: 'falta META_WABA_ID' };
+  if (!capiConfigurado()) return { ok: false, detalle: 'falta META_CAPI_TOKEN' };
+  const v = process.env.META_GRAPH_VERSION?.trim() || 'v23.0';
+  const res = await fetch(
+    `https://graph.facebook.com/${v}/${wabaId()}/dataset?access_token=${encodeURIComponent(process.env.META_CAPI_TOKEN!.trim())}`,
+    { signal: AbortSignal.timeout(8_000) }
+  );
+  const d = (await res.json().catch(() => ({}))) as { id?: string; data?: Array<{ id?: string }>; error?: { message?: string; code?: number } };
+  if (!res.ok) return { ok: false, detalle: `Meta no dejó leer la WABA con este token: ${String(d.error?.message ?? res.status).slice(0, 220)}` };
+  const id = d.id ?? d.data?.[0]?.id;
+  if (!id) return { ok: false, detalle: 'la WABA no tiene ningún dataset ligado todavía' };
+  const nuestro = process.env.META_DATASET_ID?.trim();
+  return {
+    ok: id === nuestro,
+    datasetId: id,
+    detalle: id === nuestro
+      ? `la WABA está ligada a nuestro dataset (${id}): la atribución por clic debe funcionar`
+      : `la WABA tiene su propio dataset (${id}), distinto del que usamos (${nuestro})`,
+  };
+}

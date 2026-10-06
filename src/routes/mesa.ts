@@ -13,7 +13,7 @@ import { db } from '../db/client';
 import { getConfig } from '../config';
 import { minutosDe, turnoDe } from '../services/reservas';
 import { campanaDeOrigen, embudo, gastoDelPeriodo, Campana } from '../services/mesa';
-import { capiConfigurado, verificarMeta } from '../services/capi';
+import { capiConfigurado, verificarMeta, datasetDeLaWaba } from '../services/capi';
 import {
   findContactOpportunity,
   moveOpportunityToStage,
@@ -272,7 +272,8 @@ mesaRouter.get(
   '/meta/estado',
   ah(async (_req, res) => {
     const r = await verificarMeta().catch((e: Error) => ({ ok: false, detalle: e.message }));
-    res.json(r ?? { ok: false, detalle: 'Conversions API sin configurar (faltan META_DATASET_ID y META_CAPI_TOKEN)' });
+    const waba = await datasetDeLaWaba().catch((e: Error) => ({ ok: false, detalle: e.message }));
+    res.json({ ...(r ?? { ok: false, detalle: 'Conversions API sin configurar (faltan META_DATASET_ID y META_CAPI_TOKEN)' }), waba });
   })
 );
 

@@ -501,7 +501,7 @@
       if (d.meta) {
         var m = d.meta;
         h += '<h3 class="seccion">Compras enviadas a Meta</h3><div class="tarjeta"><div class="meta" style="font-size:.95rem;color:var(--tinta)">' +
-          '<b>' + m.enviados + '</b> enviadas · ' + m.pendientes + ' por enviar (salen 10 min después de cerrar la mesa)' +
+          '<b>' + m.enviados + '</b> enviadas' + (m.por_clic ? ' (<b>' + m.por_clic + '</b> ligadas al clic del anuncio)' : '') + ' · ' + m.pendientes + ' por enviar (salen 10 min después de cerrar la mesa)' +
           (m.prueba ? ' · <b>' + m.prueba + '</b> en modo prueba' : '') +
           (m.con_error ? ' · <b style="color:var(--rojo)">' + m.con_error + ' con error</b>' : '') +
           (m.sin_telefono ? ' · ' + m.sin_telefono + ' sin teléfono (walk-ins)' : '') + '</div></div>';

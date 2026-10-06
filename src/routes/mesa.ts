@@ -112,7 +112,7 @@ async function moverTarjeta(contactId: string | null, estado: Estado, nombre: st
 const SELECT_RESERVAS = `
   SELECT r.id::int AS id, r.contact_id, r.nombre, r.telefono, to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.hora,
          r.personas, r.ocasion, r.turno, r.origen_mensaje, r.canal, r.como_se_entero, r.estado,
-         r.created_at, r.confirmada_at, r.llegada_at,
+         r.created_at, r.confirmada_at, r.llegada_at, r.ad_id, r.ad_name,
          c.total::float AS total,
          (c.capi_enviado_at IS NOT NULL) AS en_meta
     FROM reservas r
@@ -363,7 +363,9 @@ mesaRouter.get(
               count(*) FILTER (WHERE c.capi_enviado_at IS NOT NULL AND COALESCE((c.capi_respuesta->>'prueba')::boolean, false))::int AS prueba,
               count(*) FILTER (WHERE c.capi_enviado_at IS NULL AND c.capi_respuesta ? 'omitido')::int AS sin_telefono,
               count(*) FILTER (WHERE c.capi_enviado_at IS NULL AND c.capi_respuesta ? 'error')::int AS con_error,
-              count(*) FILTER (WHERE c.capi_enviado_at IS NULL AND c.capi_respuesta IS NULL)::int AS pendientes
+              count(*) FILTER (WHERE c.capi_enviado_at IS NULL AND c.capi_respuesta IS NULL)::int AS pendientes,
+              count(*) FILTER (WHERE c.capi_enviado_at IS NOT NULL AND r.ctwa_clid IS NOT NULL
+                                 AND NOT COALESCE((c.capi_respuesta->>'respaldo_tienda')::boolean, false))::int AS por_clic
          FROM consumos c JOIN reservas r ON r.id = c.reserva_id
         WHERE r.fecha BETWEEN $1 AND $2`,
       [desde, hasta]
@@ -394,7 +396,7 @@ mesaRouter.get(
     const { desde, hasta } = rango(req);
     const { rows } = await db.query(`${SELECT_RESERVAS} WHERE r.fecha BETWEEN $1 AND $2 ORDER BY r.fecha, r.hora`, [desde, hasta]);
     const filas = conCampana(rows, await campanas());
-    const cols = ['id', 'fecha', 'hora', 'turno', 'nombre', 'telefono', 'personas', 'canal', 'campana', 'origen_mensaje', 'como_se_entero', 'estado', 'ocasion', 'total'];
+    const cols = ['id', 'fecha', 'hora', 'turno', 'nombre', 'telefono', 'personas', 'canal', 'campana', 'ad_name', 'ad_id', 'origen_mensaje', 'como_se_entero', 'estado', 'ocasion', 'total'];
     const cuerpo = [cols.join(','), ...filas.map((f) => cols.map((c) => csv((f as Record<string, unknown>)[c])).join(','))].join('\n');
     res
       .type('text/csv; charset=utf-8')

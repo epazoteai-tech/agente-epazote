@@ -70,17 +70,34 @@ export interface ConsumoParaMeta {
   contactId: string | null;
   /** Instante del cierre (ms). */
   cerradoMs: number;
+  /** Clic del anuncio Click-to-WhatsApp (GHL lastAttributionSource.ctwaClid), si llegó por uno. */
+  ctwaClid?: string | null;
+}
+
+/** ID de la cuenta de WhatsApp Business (Railway: META_WABA_ID). Sin él no hay atribución por clic. */
+function wabaId(): string {
+  return process.env.META_WABA_ID?.trim() ?? '';
 }
 
 /** El evento tal cual lo recibe Meta. null si no hay con qué empatarlo. */
-export function armarEvento(c: ConsumoParaMeta): Record<string, unknown> | null {
+/**
+ * Con clic de anuncio y WABA: evento de Business Messaging (action_source
+ * business_messaging, canal whatsapp, ctwa_clid): Meta lo atribuye al clic
+ * exacto del anuncio. Sin ellos, compra en tienda empatada por teléfono.
+ * `forzarTienda` es el respaldo: si Meta rechaza el de Business Messaging (por
+ * ejemplo, porque el dataset no está ligado a la WABA), se reenvía así.
+ */
+export function armarEvento(c: ConsumoParaMeta, opciones: { forzarTienda?: boolean } = {}): Record<string, unknown> | null {
   const telefonos = telefonosParaMeta(c.telefono);
-  if (!telefonos.length) return null;
+  const porClic = !opciones.forzarTienda && !!c.ctwaClid && !!wabaId();
+  if (!telefonos.length && !porClic) return null;
   const [nombre, ...apellidos] = normalizarNombre(c.nombre).split(' ');
-  const user_data: Record<string, unknown> = {
-    ph: telefonos.map(sha256),
-    country: [sha256('mx')],
-  };
+  const user_data: Record<string, unknown> = { country: [sha256('mx')] };
+  if (telefonos.length) user_data.ph = telefonos.map(sha256);
+  if (porClic) {
+    user_data.ctwa_clid = c.ctwaClid;
+    user_data.whatsapp_business_account_id = wabaId();
+  }
   if (nombre) user_data.fn = [sha256(nombre)];
   if (apellidos.length) user_data.ln = [sha256(apellidos.join(' '))];
   if (c.contactId) user_data.external_id = [sha256(c.contactId)];
@@ -89,7 +106,8 @@ export function armarEvento(c: ConsumoParaMeta): Record<string, unknown> | null 
     event_time: Math.floor(c.cerradoMs / 1000),
     // Estable por consumo: si el envío se repite, Meta lo cuenta una sola vez.
     event_id: `epazote-consumo-${c.consumoId}`,
-    action_source: 'physical_store',
+    action_source: porClic ? 'business_messaging' : 'physical_store',
+    ...(porClic ? { messaging_channel: 'whatsapp' } : {}),
     user_data,
     custom_data: {
       currency: 'MXN',
@@ -135,7 +153,7 @@ export async function enviarPendientes(): Promise<{ enviados: number; fallidos: 
   if (!capiConfigurado()) return { enviados: 0, fallidos: 0, sinDatos: 0 };
   const { rows } = await db.query(
     `SELECT c.id::int AS consumo_id, r.id::int AS reserva_id, c.total::float AS total, r.telefono, r.nombre,
-            r.contact_id, c.actualizado_at
+            r.contact_id, r.ctwa_clid, c.actualizado_at
        FROM consumos c JOIN reservas r ON r.id = c.reserva_id
       WHERE c.capi_enviado_at IS NULL
         AND c.capi_intentos < $1
@@ -155,6 +173,7 @@ export async function enviarPendientes(): Promise<{ enviados: number; fallidos: 
       nombre: f.nombre,
       contactId: f.contact_id,
       cerradoMs: new Date(f.actualizado_at).getTime(),
+      ctwaClid: f.ctwa_clid,
     });
     if (!evento) {
       // Walk-in o reserva sin teléfono: se marca para no revisarla cada minuto.
@@ -166,13 +185,31 @@ export async function enviarPendientes(): Promise<{ enviados: number; fallidos: 
       continue;
     }
     try {
-      const r = await enviarEventos([evento]);
+      let r: Record<string, unknown>;
+      try {
+        r = await enviarEventos([evento]);
+      } catch (e) {
+        // Business Messaging rechazado: se reenvía como compra en tienda para no
+        // perder el dato, y se guarda por qué para arreglar la configuración.
+        if (evento.action_source !== 'business_messaging') throw e;
+        const tienda = armarEvento(
+          { consumoId: f.consumo_id, reservaId: f.reserva_id, total: f.total, telefono: f.telefono, nombre: f.nombre,
+            contactId: f.contact_id, cerradoMs: new Date(f.actualizado_at).getTime() },
+          { forzarTienda: true }
+        );
+        console.warn(`[capi] Business Messaging rechazado, se reenvía como tienda | consumo=${f.consumo_id}: ${(e as Error).message}`);
+        if (!tienda) throw e;
+        r = { ...(await enviarEventos([tienda])), respaldo_tienda: true, error_business_messaging: (e as Error).message };
+      }
       await db.query(
         `UPDATE consumos SET capi_enviado_at = now(), capi_intentos = capi_intentos + 1, capi_respuesta = $2 WHERE id = $1`,
         [f.consumo_id, JSON.stringify({ ...r, prueba: !!process.env.META_TEST_EVENT_CODE?.trim() })]
       );
       enviados++;
-      console.log(`[capi] Purchase enviado | consumo=${f.consumo_id} valor=${f.total} recibidos=${String(r.events_received ?? '?')}`);
+      console.log(
+        `[capi] Purchase enviado | consumo=${f.consumo_id} valor=${f.total} recibidos=${String(r.events_received ?? '?')} ` +
+          `via=${r.respaldo_tienda ? 'tienda (respaldo)' : evento.action_source}`
+      );
     } catch (e) {
       await db.query(
         `UPDATE consumos SET capi_intentos = capi_intentos + 1, capi_respuesta = $2 WHERE id = $1`,
@@ -215,7 +252,10 @@ export async function verificarMeta(): Promise<{ ok: boolean; detalle: string } 
     ? ' ⚠️ CON código de prueba: los eventos NO cuentan en campañas hasta quitar META_TEST_EVENT_CODE'
     : '';
   if (res.ok || (e.code === 100 && /\bdata\b/i.test(msg) && !/permission/i.test(msg))) {
-    return { ok: true, detalle: `token y dataset aceptan eventos${prueba}` };
+    const clic = wabaId()
+      ? ' · con atribución por clic de anuncio (WABA configurada)'
+      : ' · sin META_WABA_ID: las compras se atribuyen solo por teléfono';
+    return { ok: true, detalle: `token y dataset aceptan eventos${clic}${prueba}` };
   }
   if (e.code === 190) return { ok: false, detalle: `token inválido o vencido: ${msg.slice(0, 200)}` };
   if (/permission|permiso/i.test(msg) || e.code === 10 || e.code === 200) {

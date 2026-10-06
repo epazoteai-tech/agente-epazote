@@ -50,7 +50,7 @@ import { contactoBloqueadoAsync, bloquearContacto } from '../blocklist';
 import { esMensajeRepetidoDeBot, REPETICIONES_DE_BOT } from '../loop-guard';
 import { pareceNombreReal } from '../nombres';
 import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu, quitarCalificativos } from '../services/reservas';
-import { guardarReservaDelBot } from '../services/mesa';
+import { guardarReservaDelBot, anuncioDelContacto } from '../services/mesa';
 
 /**
  * Estado compartido entre las tools de UN mismo turno (un job del worker).
@@ -1453,9 +1453,11 @@ async function handleRegistrarReserva(
 
   const nombre = solicitud.nombre.trim().replace(/\s+/g, ' ');
   let telefono = '';
+  let anuncio: ReturnType<typeof anuncioDelContacto> = null;
   try {
     const contacto = await getContact(contactId);
     telefono = contacto?.phone ?? '';
+    anuncio = anuncioDelContacto(contacto);
     if (!pareceNombreReal(contacto?.firstName)) await updateContactName(contactId, nombre);
   } catch (err) {
     console.warn(`[tool:registrar_reserva] getContact/updateContactName failed: ${(err as Error).message}`);
@@ -1515,6 +1517,7 @@ async function handleRegistrarReserva(
       ocasion: solicitud.ocasion,
       turno: v.turno,
       origen,
+      anuncio,
     },
     res.timezone
   )

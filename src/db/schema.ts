@@ -81,6 +81,12 @@ CREATE TABLE IF NOT EXISTS reservas (
   actualizado_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_reservas_fecha ON reservas(fecha, hora);
+-- Atribución del anuncio Click-to-WhatsApp (lastAttributionSource del contacto
+-- en GHL): ctwa_clid identifica el clic exacto; con él el Purchase a Meta se
+-- atribuye al anuncio y no solo por teléfono (services/capi.ts).
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS ctwa_clid TEXT;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS ad_id TEXT;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS ad_name TEXT;
 CREATE INDEX IF NOT EXISTS idx_reservas_contacto ON reservas(contact_id, fecha);
 
 -- Lo que consumió la mesa. Fase 1: total capturado a mano. Fase 2: foto del

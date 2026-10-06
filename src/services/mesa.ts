@@ -104,6 +104,8 @@ export interface ReservaDelBot {
   ocasion: string;
   turno: string;
   origen: string;
+  /** Del anuncio Click-to-WhatsApp, si el contacto llegó por uno (GHL lastAttributionSource). */
+  anuncio?: { ctwaClid?: string; adId?: string; adName?: string } | null;
 }
 
 /**
@@ -134,10 +136,26 @@ export async function guardarReservaDelBot(
     if (rows[0]) return { id: Number(rows[0].id), accion: 'cambio' };
   }
   const { rows } = await db.query(
-    `INSERT INTO reservas (contact_id, nombre, telefono, fecha, hora, personas, ocasion, turno, origen_mensaje, canal)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'bot')
+    `INSERT INTO reservas (contact_id, nombre, telefono, fecha, hora, personas, ocasion, turno, origen_mensaje, canal, ctwa_clid, ad_id, ad_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'bot', $10, $11, $12)
      RETURNING id`,
-    [r.contactId, r.nombre, r.telefono, r.fecha, r.hora, r.personas, ocasion, r.turno, r.origen]
+    [r.contactId, r.nombre, r.telefono, r.fecha, r.hora, r.personas, ocasion, r.turno, r.origen,
+     r.anuncio?.ctwaClid || null, r.anuncio?.adId || null, r.anuncio?.adName || null]
   );
   return { id: Number(rows[0].id), accion: 'nueva' };
+}
+
+
+/**
+ * Lee del contacto de GHL el anuncio que lo trajo. GHL guarda en
+ * `lastAttributionSource` el ctwaClid, adId y adName de los anuncios
+ * Click-to-WhatsApp (verificado el 05/10/2026 con un contacto real de la
+ * campaña). null si no llegó por un anuncio.
+ */
+export function anuncioDelContacto(contacto: unknown): { ctwaClid?: string; adId?: string; adName?: string } | null {
+  const a = (contacto as { lastAttributionSource?: Record<string, unknown> } | null)?.lastAttributionSource;
+  if (!a || typeof a !== 'object') return null;
+  const txt = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+  const r = { ctwaClid: txt(a.ctwaClid), adId: txt(a.adId), adName: txt(a.adName) };
+  return r.ctwaClid || r.adId ? r : null;
 }

@@ -40,5 +40,19 @@ check('external_id cifrado', e.user_data.external_id, [sha('abc')]);
 check('event_time en segundos', e.event_time, Date.parse('2026-10-03T03:00:00Z') / 1000);
 check('walk-in sin teléfono: no se manda', armarEvento({ ...base, telefono: '' }), null);
 
+// Anuncios Click-to-WhatsApp: atribución por clic (Business Messaging)
+const CLID = 'AfhGXKvQcvJI9JXQpQBnW3j6SC';
+delete process.env.META_WABA_ID;
+check('con clic pero sin WABA: compra en tienda', armarEvento({ ...base, ctwaClid: CLID }).action_source, 'physical_store');
+process.env.META_WABA_ID = '123456789';
+const bm = armarEvento({ ...base, ctwaClid: CLID });
+check('con clic y WABA: Business Messaging por WhatsApp', [bm.action_source, bm.messaging_channel], ['business_messaging', 'whatsapp']);
+check('lleva el ctwa_clid y la WABA en user_data', [bm.user_data.ctwa_clid, bm.user_data.whatsapp_business_account_id], [CLID, '123456789']);
+check('mismo event_id que la versión tienda (Meta no duplica)', bm.event_id, e.event_id);
+check('respaldo forzado: compra en tienda sin clic', [armarEvento({ ...base, ctwaClid: CLID }, { forzarTienda: true }).action_source, 'ctwa_clid' in armarEvento({ ...base, ctwaClid: CLID }, { forzarTienda: true }).user_data], ['physical_store', false]);
+check('sin teléfono pero con clic: se manda igual', armarEvento({ ...base, telefono: '', ctwaClid: CLID })?.action_source, 'business_messaging');
+check('sin teléfono ni clic: no se manda', armarEvento({ ...base, telefono: '' }), null);
+delete process.env.META_WABA_ID;
+
 console.log(fallas ? `\n${fallas} FALLA(S)` : '\nTodo bien');
 process.exit(fallas ? 1 : 0);

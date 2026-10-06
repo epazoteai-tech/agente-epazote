@@ -88,6 +88,15 @@ ALTER TABLE reservas ADD COLUMN IF NOT EXISTS ctwa_clid TEXT;
 ALTER TABLE reservas ADD COLUMN IF NOT EXISTS ad_id TEXT;
 ALTER TABLE reservas ADD COLUMN IF NOT EXISTS ad_name TEXT;
 CREATE INDEX IF NOT EXISTS idx_reservas_contacto ON reservas(contact_id, fecha);
+-- Solicitudes que el bot escaló a una persona (grupo grande, evento, reserva
+-- que no se pudo registrar): entran a la Mesa con lo que el cliente alcanzó a
+-- dar. Por eso fecha, hora y personas pueden venir vacías; el host las
+-- completa antes de confirmar (la ruta de estado lo exige).
+ALTER TABLE reservas ALTER COLUMN fecha DROP NOT NULL;
+ALTER TABLE reservas ALTER COLUMN hora DROP NOT NULL;
+ALTER TABLE reservas ALTER COLUMN personas DROP NOT NULL;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS escalada BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS motivo_escalacion TEXT;
 
 -- Lo que consumió la mesa. Fase 1: total capturado a mano. Fase 2: foto del
 -- ticket leída con Vision (foto_url, parse_json) y evento Purchase a Meta

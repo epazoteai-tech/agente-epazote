@@ -135,6 +135,20 @@ export async function guardarReservaDelBot(
     );
     if (rows[0]) return { id: Number(rows[0].id), accion: 'cambio' };
   }
+  // Si este contacto ya estaba en la Mesa como escalado sin fecha (pidió mesa,
+  // lo atendió una persona y después el bot la registró completa), se completa
+  // esa fila en vez de dejar dos tarjetas de la misma familia.
+  const { rows: incompleta } = await db.query(
+    `UPDATE reservas
+        SET nombre = $2, fecha = $3, hora = $4, personas = $5, ocasion = $6, turno = $7, actualizado_at = now()
+      WHERE id = (
+        SELECT id FROM reservas
+         WHERE contact_id = $1 AND estado = 'solicitada' AND escalada AND fecha IS NULL
+         ORDER BY created_at DESC LIMIT 1)
+      RETURNING id`,
+    [r.contactId, r.nombre, r.fecha, r.hora, r.personas, ocasion, r.turno]
+  );
+  if (incompleta[0]) return { id: Number(incompleta[0].id), accion: 'cambio' };
   const { rows } = await db.query(
     `INSERT INTO reservas (contact_id, nombre, telefono, fecha, hora, personas, ocasion, turno, origen_mensaje, canal, ctwa_clid, ad_id, ad_name)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'bot', $10, $11, $12)
@@ -145,6 +159,58 @@ export async function guardarReservaDelBot(
   return { id: Number(rows[0].id), accion: 'nueva' };
 }
 
+
+export interface ReservaEscalada {
+  contactId: string;
+  nombre: string;
+  telefono: string;
+  fecha: string | null; // YYYY-MM-DD
+  hora: string | null; // HH:MM
+  personas: number | null;
+  ocasion: string;
+  turno: string;
+  origen: string;
+  motivo: string;
+  anuncio?: { ctwaClid?: string; adId?: string; adName?: string } | null;
+}
+
+/**
+ * Deja en la Mesa la mesa que el bot NO pudo registrar y pasó a una persona
+ * (grupo grande, evento, falla al registrar). Va como "solicitada" con la
+ * marca de escalada para que el host la vea en Próximas y la confirme ahí.
+ *
+ * Si el contacto ya tiene una solicitud viva (la registró el bot y luego pidió
+ * a una persona, o se escaló dos veces), se marca y se completa esa misma con
+ * lo nuevo, sin borrar lo que ya tenía: una sola tarjeta por familia.
+ */
+export async function guardarReservaEscalada(r: ReservaEscalada, tz: string): Promise<{ id: number; accion: 'nueva' | 'marcada' }> {
+  const ocasion = ocasionLimpia(r.ocasion);
+  const { rows: viva } = await db.query(
+    `UPDATE reservas
+        SET escalada = true, motivo_escalacion = $2,
+            nombre = COALESCE(NULLIF($3, ''), nombre), fecha = COALESCE($4::date, fecha),
+            hora = COALESCE($5, hora), personas = COALESCE($6, personas),
+            ocasion = COALESCE(NULLIF($7, ''), ocasion), turno = COALESCE(NULLIF($8, ''), turno),
+            actualizado_at = now()
+      WHERE id = (
+        SELECT id FROM reservas
+         WHERE contact_id = $1 AND estado = 'solicitada'
+           AND (fecha IS NULL OR fecha >= (now() AT TIME ZONE $9)::date)
+         ORDER BY created_at DESC LIMIT 1)
+      RETURNING id`,
+    [r.contactId, r.motivo, r.nombre, r.fecha, r.hora, r.personas, ocasion, r.turno, tz]
+  );
+  if (viva[0]) return { id: Number(viva[0].id), accion: 'marcada' };
+  const { rows } = await db.query(
+    `INSERT INTO reservas (contact_id, nombre, telefono, fecha, hora, personas, ocasion, turno, origen_mensaje, canal,
+                           ctwa_clid, ad_id, ad_name, escalada, motivo_escalacion)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'bot', $10, $11, $12, true, $13)
+     RETURNING id`,
+    [r.contactId, r.nombre, r.telefono, r.fecha, r.hora, r.personas, ocasion, r.turno, r.origen,
+     r.anuncio?.ctwaClid || null, r.anuncio?.adId || null, r.anuncio?.adName || null, r.motivo]
+  );
+  return { id: Number(rows[0].id), accion: 'nueva' };
+}
 
 /**
  * Lee del contacto de GHL el anuncio que lo trajo. GHL guarda en

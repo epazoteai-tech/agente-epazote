@@ -112,7 +112,7 @@ async function moverTarjeta(contactId: string | null, estado: Estado, nombre: st
 const SELECT_RESERVAS = `
   SELECT r.id::int AS id, r.contact_id, r.nombre, r.telefono, to_char(r.fecha, 'YYYY-MM-DD') AS fecha, r.hora,
          r.personas, r.ocasion, r.turno, r.origen_mensaje, r.canal, r.como_se_entero, r.estado,
-         r.created_at, r.confirmada_at, r.llegada_at, r.ad_id, r.ad_name,
+         r.created_at, r.confirmada_at, r.llegada_at, r.ad_id, r.ad_name, r.escalada, r.motivo_escalacion,
          c.total::float AS total,
          (c.capi_enviado_at IS NOT NULL) AS en_meta
     FROM reservas r
@@ -140,6 +140,21 @@ mesaRouter.get(
   })
 );
 
+/**
+ * Mesas que el bot pasó a una persona sin día definido todavía (ej. "somos 15,
+ * queremos ir un día de estos"). No caen en ningún día, así que Próximas las
+ * pide aparte y las pone arriba.
+ */
+mesaRouter.get(
+  '/reservas/sin-fecha',
+  ah(async (_req, res) => {
+    const { rows } = await db.query(
+      `${SELECT_RESERVAS} WHERE r.fecha IS NULL AND r.estado = 'solicitada' ORDER BY r.created_at DESC`
+    );
+    res.json({ reservas: conCampana(rows, await campanas()) });
+  })
+);
+
 mesaRouter.post(
   '/reservas/:id/estado',
   ah(async (req, res) => {
@@ -147,6 +162,18 @@ mesaRouter.post(
     if (!ESTADOS.includes(estado)) {
       res.status(400).json({ error: 'estado_invalido' });
       return;
+    }
+    // Una escalada puede venir sin día, hora o personas: no se confirma una
+    // mesa que no se sabe cuándo es. El host la completa primero.
+    if (['confirmada', 'llego', 'no_llego'].includes(estado)) {
+      const { rows: faltan } = await db.query(
+        `SELECT 1 FROM reservas WHERE id = $1 AND (fecha IS NULL OR hora IS NULL OR personas IS NULL)`,
+        [Number(req.params.id)]
+      );
+      if (faltan[0]) {
+        res.status(400).json({ error: 'faltan_datos', message: 'Pon día, hora y personas antes de confirmar.' });
+        return;
+      }
     }
     const { rows } = await db.query(
       `UPDATE reservas
@@ -167,13 +194,17 @@ mesaRouter.post(
   })
 );
 
-/** Corrección rápida del host: cambió la hora o llegaron más personas. */
+/** Corrección rápida del host: cambió la hora, llegaron más personas, o completa una escalada. */
 mesaRouter.post(
   '/reservas/:id',
   ah(async (req, res) => {
-    const { hora, personas, fecha } = req.body ?? {};
+    const { hora, personas, fecha, nombre } = req.body ?? {};
     const sets: string[] = [];
     const vals: unknown[] = [Number(req.params.id)];
+    if (typeof nombre === 'string' && nombre.trim()) {
+      vals.push(nombre.trim().replace(/\s+/g, ' ').slice(0, 120));
+      sets.push(`nombre = $${vals.length}`);
+    }
     if (typeof hora === 'string' && HORA.test(hora)) {
       vals.push(hora.padStart(5, '0'));
       sets.push(`hora = $${vals.length}`);

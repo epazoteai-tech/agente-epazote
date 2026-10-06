@@ -87,6 +87,8 @@
   .chip.est-confirmada { background: var(--verde-claro); color: var(--verde-osc); border-color: #C5E3CE; }
   .chip.est-llego { background: var(--verde); color: #fff; border-color: var(--verde); }
   .chip.est-no_llego, .chip.est-cancelada { background: #F2EEED; color: var(--gris); }
+  .chip.humano { background: var(--tinta); color: #fff; border-color: var(--tinta); }
+  .motivo { margin-top: 10px; font-size: .92rem; color: var(--tinta); background: var(--rojo-claro); border-left: 3px solid var(--rojo); border-radius: 6px; padding: 7px 10px; }
   .ocasion { margin-top: 10px; font-size: .92rem; color: var(--tinta); background: var(--hueso); border-left: 3px solid var(--verde); border-radius: 6px; padding: 7px 10px; }
   .botones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
   .botones .ancho { grid-column: 1 / -1; }
@@ -244,8 +246,9 @@
 
 <!-- Editar -->
 <div class="velo" id="m-editar"><div class="hoja">
-  <h3>Corregir reserva</h3>
+  <h3 id="ed-titulo">Corregir reserva</h3>
   <p class="ayuda" id="ed-quien"></p>
+  <div id="ed-nombre-caja" class="oculto" style="margin-bottom:8px"><label>Nombre</label><input id="ed-nombre" type="text" autocomplete="off" /></div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     <div><label>Fecha</label><input id="ed-fecha" type="date" /></div>
     <div><label>Hora</label><input id="ed-hora" type="time" step="900" /></div>
@@ -336,6 +339,7 @@
     if (r.canal === 'walk-in') h += '<span class="chip">Walk-in · ' + esc(COMO[r.como_se_entero] || '') + '</span>';
     else if (r.canal === 'telefono') h += '<span class="chip">Teléfono</span>';
     else h += r.campana ? '<span class="chip camp">' + esc(r.campana) + '</span>' : '<span class="chip">WhatsApp</span>';
+    if (r.escalada) h += '<span class="chip humano">Atención humana</span>';
     if (r.turno) h += '<span class="chip">' + esc(r.turno) + '</span>';
     if (r.en_meta) h += '<span class="chip est-confirmada">Meta ✓</span>';
     return h;
@@ -343,21 +347,27 @@
 
   function botones(r) {
     var id = r.id;
+    if (r.estado === 'solicitada' && incompleta(r)) return '<button class="btn btn-ok" data-acc="completar" data-id="' + id + '">Completar y confirmar</button><button class="btn btn-mal" data-acc="cancelada" data-id="' + id + '">Cancelar</button>';
     if (r.estado === 'solicitada') return '<button class="btn btn-ok" data-acc="confirmada" data-id="' + id + '">Confirmar</button><button class="btn btn-mal" data-acc="cancelada" data-id="' + id + '">Cancelar</button>';
     if (r.estado === 'confirmada') return '<button class="btn btn-ok" data-acc="llego" data-id="' + id + '">Llegó</button><button class="btn btn-mal" data-acc="no_llego" data-id="' + id + '">No llegó</button>';
     if (r.estado === 'llego') return '<button class="btn ' + (r.total == null ? 'btn-principal' : 'btn-sec') + ' ancho" data-acc="consumo" data-id="' + id + '">' + (r.total == null ? 'Cerrar mesa' : 'Corregir total') + '</button>';
     return '<button class="btn btn-tenue ancho" data-acc="confirmada" data-id="' + id + '">Reabrir como confirmada</button>';
   }
 
+  // Escaladas: el bot pasó la mesa a una persona con lo que el cliente alcanzó
+  // a dar; puede faltar el día, la hora o cuántos son.
+  function incompleta(r) { return !r.fecha || !r.hora || !r.personas; }
+
   function tarjeta(r) {
     var nombre = r.nombre || (r.canal === 'walk-in' ? 'Walk-in' : 'Sin nombre');
-    var meta = r.personas + (r.personas === 1 ? ' persona' : ' personas') + (r.telefono ? ' · ' + esc(r.telefono) : '');
+    var meta = (r.personas ? r.personas + (r.personas === 1 ? ' persona' : ' personas') : 'Personas por definir') + (r.telefono ? ' · ' + esc(r.telefono) : '');
     return '<div class="tarjeta' + (r._pend ? ' pendiente' : '') + '" data-id="' + r.id + '">' +
-      '<div class="arriba"><div class="hora">' + horaHtml(r.hora) + '</div>' +
+      '<div class="arriba"><div class="hora">' + (r.hora ? horaHtml(r.hora) : '—') + '</div>' +
       '<div class="quien"><b>' + esc(nombre) + '</b><div class="meta">' + meta + '</div><div class="chips">' + chips(r) + '</div></div>' +
       (r.total != null ? '<div class="total">' + dinero(r.total) + '</div>' : '') + '</div>' +
+      (r.escalada && r.motivo_escalacion && r.estado === 'solicitada' ? '<div class="motivo">🙋 ' + esc(r.motivo_escalacion) + (r.fecha ? '' : ' · sin día definido') + '</div>' : '') +
       (r.ocasion ? '<div class="ocasion">📝 ' + esc(r.ocasion) + '</div>' : '') +
-      '<div class="botones">' + botones(r) + (r.canal !== 'walk-in' && ['solicitada', 'confirmada'].indexOf(r.estado) >= 0 ? '<button class="btn btn-tenue ancho" data-acc="editar" data-id="' + r.id + '">Corregir hora o personas</button>' : '') + '</div></div>';
+      '<div class="botones">' + botones(r) + (r.canal !== 'walk-in' && ['solicitada', 'confirmada'].indexOf(r.estado) >= 0 && !(r.estado === 'solicitada' && incompleta(r)) ? '<button class="btn btn-tenue ancho" data-acc="editar" data-id="' + r.id + '">Corregir hora o personas</button>' : '') + '</div></div>';
   }
 
   function seccion(titulo, lista) {
@@ -383,12 +393,18 @@
 
   function cargarProximas() {
     var hoy = estado.hoy || new Date().toISOString().slice(0, 10);
-    return api('/reservas?desde=' + sumarDias(hoy, 1) + '&hasta=' + sumarDias(hoy, 14)).then(function (d) {
+    return Promise.all([
+      api('/reservas?desde=' + sumarDias(hoy, 1) + '&hasta=' + sumarDias(hoy, 14)),
+      api('/reservas/sin-fecha')
+    ]).then(function (rs) {
+      var d = rs[0], sinDia = rs[1].reservas;
       var porFecha = {};
       d.reservas.filter(function (r) { return r.estado !== 'cancelada'; }).forEach(function (r) { (porFecha[r.fecha] = porFecha[r.fecha] || []).push(r); });
       var fechas = Object.keys(porFecha).sort();
-      estado.reservas = d.reservas;
-      $('#lista-proximas').innerHTML = fechas.length ? fechas.map(function (f) { return seccion(fechaBonita(f), porFecha[f]); }).join('') : '<div class="vacio vacio-icono">Sin reservas en los próximos 14 días.</div>';
+      estado.reservas = sinDia.concat(d.reservas);
+      var h = sinDia.length ? seccion('Atención humana · sin día', sinDia) : '';
+      h += fechas.length ? fechas.map(function (f) { return seccion(fechaBonita(f), porFecha[f]); }).join('') : (sinDia.length ? '' : '<div class="vacio vacio-icono">Sin reservas en los próximos 14 días.</div>');
+      $('#lista-proximas').innerHTML = h;
     });
   }
 
@@ -403,7 +419,15 @@
     var id = +b.dataset.id, acc = b.dataset.acc;
     var r = estado.reservas.filter(function (x) { return x.id === id; })[0]; if (!r) return;
     if (acc === 'consumo') { actual = r; $('#cs-quien').textContent = (r.nombre || 'Walk-in') + ' · ' + r.personas + ' personas'; $('#cs-total').value = r.total == null ? '' : r.total; $('#error-consumo').textContent = ''; abrir('#m-consumo'); setTimeout(function () { $('#cs-total').focus(); }, 50); return; }
-    if (acc === 'editar') { actual = r; $('#ed-quien').textContent = r.nombre || ''; $('#ed-fecha').value = r.fecha; $('#ed-hora').value = r.hora; $('#ed-personas').value = r.personas; $('#error-editar').textContent = ''; abrir('#m-editar'); return; }
+    if (acc === 'editar' || acc === 'completar') {
+      actual = r; actual._completar = acc === 'completar';
+      $('#ed-titulo').textContent = actual._completar ? 'Completar y confirmar' : 'Corregir reserva';
+      $('#ed-quien').textContent = actual._completar ? 'Pon lo que acordaron con el cliente en el chat.' : (r.nombre || '');
+      $('#ed-nombre-caja').classList.toggle('oculto', !actual._completar); $('#ed-nombre').value = r.nombre || '';
+      $('#ed-fecha').value = r.fecha || ''; $('#ed-hora').value = r.hora || ''; $('#ed-personas').value = r.personas || '';
+      $('#ed-guardar').textContent = actual._completar ? 'Confirmar mesa' : 'Guardar';
+      $('#error-editar').textContent = ''; abrir('#m-editar'); return;
+    }
     if (acc === 'cancelada' && !confirmarSuave(b)) return;
     var antes = r.estado; r.estado = acc; r._pend = true; repintar();
     enviar('/reservas/' + id + '/estado', { estado: acc }).then(function () { r._pend = false; repintar(); }, function (e) { r.estado = antes; r._pend = false; repintar(); alertar(e.message); });
@@ -455,8 +479,13 @@
   });
 
   $('#ed-guardar').addEventListener('click', function () {
-    var r = actual;
-    api('/reservas/' + r.id, { metodo: 'POST', cuerpo: { fecha: $('#ed-fecha').value, hora: $('#ed-hora').value, personas: +$('#ed-personas').value } })
+    var r = actual, cuerpo = { fecha: $('#ed-fecha').value, hora: $('#ed-hora').value, personas: +$('#ed-personas').value };
+    if (r._completar) {
+      if (!cuerpo.fecha || !cuerpo.hora || !(cuerpo.personas > 0)) { $('#error-editar').textContent = 'Pon día, hora y personas.'; return; }
+      cuerpo.nombre = $('#ed-nombre').value;
+    }
+    api('/reservas/' + r.id, { metodo: 'POST', cuerpo: cuerpo })
+      .then(function () { return r._completar ? api('/reservas/' + r.id + '/estado', { metodo: 'POST', cuerpo: { estado: 'confirmada' } }) : null; })
       .then(function () { cerrarTodo(); cargar(); }, function (e) { $('#error-editar').textContent = e.message; });
   });
 

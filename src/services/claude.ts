@@ -242,7 +242,10 @@ function buildTools(): Anthropic.Tool[] {
         'Notifica al equipo humano que el contacto necesita atención de una persona. ' +
         'Úsala cuando: el contacto pide hablar con alguien, está molesto, es una urgencia, ' +
         'o detectes algo fuera de tu alcance. Agrega un tag y una nota en GHL — el equipo lo ve ahí. ' +
-        'Después de llamarla, dile al contacto con calidez que ya notificaste al equipo.',
+        'Después de llamarla, dile al contacto con calidez que ya notificaste al equipo.' +
+        (cfg.reservations
+          ? ' Si lo que quiere es una mesa, pon es_reserva=true y los datos que YA te dio (no se los pidas solo para esto).'
+          : ''),
       input_schema: {
         type: 'object' as const,
         properties: {
@@ -250,6 +253,22 @@ function buildTools(): Anthropic.Tool[] {
             type: 'string',
             description: 'Por qué escalas, en 1 frase corta (ej: "pide hablar con persona", "queja fuerte", "caso complejo").',
           },
+          ...(cfg.reservations
+            ? {
+                es_reserva: {
+                  type: 'boolean',
+                  description:
+                    'true si el contacto quiere una mesa que tú no puedes registrar (grupo grande, evento, la reserva ' +
+                    'no se pudo registrar). Así queda en la Mesa de Control para que el equipo la confirme. ' +
+                    'false para quejas, prensa, empleo, "ya llegué", etc.',
+                },
+                nombre: { type: 'string', description: 'Solo con es_reserva: nombre que dio el contacto. Vacío si no lo dio.' },
+                fecha: { type: 'string', description: 'Solo con es_reserva: YYYY-MM-DD si ya dijo el día. Vacío si no.' },
+                hora: { type: 'string', description: 'Solo con es_reserva: HH:MM 24h si ya dijo la hora. Vacío si no.' },
+                personas: { type: 'integer', description: 'Solo con es_reserva: cuántas personas, si ya lo dijo.' },
+                ocasion: { type: 'string', description: 'Solo con es_reserva: ocasión o detalle (evento, cumpleaños, empresa). Vacío si no.' },
+              }
+            : {}),
         },
         required: ['motivo_escalacion'],
       },

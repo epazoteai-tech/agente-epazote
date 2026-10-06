@@ -144,7 +144,7 @@ export function validarReserva(
       error: 'grupo_grande',
       message:
         `Grupo de ${s.personas} personas: los grupos de ${cfg.grupo_grande_desde} o más los atiende directo el equipo. ` +
-        'NO lo registres como reserva normal. Usa escalar_a_humano y dile que una persona del equipo le escribe por aquí para organizarlo.',
+        'NO lo registres como reserva normal. Usa escalar_a_humano con es_reserva=true y los datos que ya dio, y dile que una persona del equipo le escribe por aquí para organizarlo.',
     };
   }
 

@@ -134,7 +134,7 @@ async function unTurno(client, model, variante, messages, cfg, acum) {
     messages.push({ role: 'assistant', content: r.content });
     if (stop === 'tool_use') {
       const usos = r.content.filter((b) => b.type === 'tool_use');
-      usos.forEach((t) => { acum.toolCalls++; tools.push(t.name); });
+      usos.forEach((t) => { acum.toolCalls++; tools.push(t.name === 'escalar_a_humano' ? `${t.name} ${JSON.stringify(t.input)}` : t.name); });
       messages.push({ role: 'user', content: usos.map((t) => ({
         type: 'tool_result', tool_use_id: t.id, content: resultadoSintetico(t.name, t.input),
       })) });
@@ -237,7 +237,9 @@ function reportar(corridas, reglas) {
     console.error('AVISO: usando conversaciones.ejemplo.js (genéricas).');
     console.error('Copia a pruebas/conversaciones.js y escríbelas con los casos REALES del cliente.\n');
   }
-  const convs = require(archivo);
+  // SOLO=grupo-grande,evento-privado corre solo esas (más barato al probar un cambio puntual).
+  const solo = (process.env.SOLO || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const convs = require(archivo).filter(([n]) => !solo.length || solo.includes(n));
   const cfg = getConfig();
   const reglas = bateria(cfg);
   const turnos = convs.reduce((a, [, t]) => a + t.length, 0);

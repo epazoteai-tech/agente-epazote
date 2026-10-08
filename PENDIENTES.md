@@ -34,7 +34,7 @@ el equipo").
 | 4 | Objeción más común | ✅ "A veces no contestan el teléfono" (guion nuevo en `<manejo_de_objeciones>`) | Ofrece el chat como el camino que sí contesta |
 | 5 | Quién recibe el aviso de reservas del bot | ✅ **Mony** (decisión de Jorge 29/09; Gustavo confirma las de redes, pero el aviso va a Mony) | |
 | 6 | Menú digital y rangos de precio | ⏳ Gustavo lo manda "en un ratito" | No da cifras |
-| 7 | Estacionamiento / acceso a Parque Centro | ⏳ "No todavía" | Solo da la dirección |
+| 7 | Estacionamiento / acceso a Parque Centro | ✅ 07/10/2026 | Edificio Maia (el de la postrería), por el interior de Parque Centro, enfrente de Matsuri. Estacionamiento: Parque Centro o el de Buffalo Wild Wings |
 | 8 | Facturación | ⏳ Sin respuesta | Lo anota o escala |
 | 9 | Mascotas, terraza, menú en inglés | ⏳ Sin respuesta | Lo anota |
 

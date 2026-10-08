@@ -26,7 +26,7 @@ module.exports = [
   ['queja',               ['fui el domingo y tardaron una hora en traer la comida', 'pesimo la verdad', 'quiero hablar con el gerente']],
   ['quiere-humano',       ['me pasas con una persona?', 'no quiero hablar con un bot', 'ok']],
   ['ya-llegue',           ['ya estoy afuera', 'no encuentro la entrada del edificio', 'ok']],
-  ['como-llegar',         ['en que edificio estan?', 'y por donde entro?', 'gracias']],
+  ['como-llegar',         ['en que edificio estan?', 'y por donde entro?', 'hay estacionamiento?', 'gracias']],
   ['prensa',              ['hola, soy creadora de contenido de comida en Saltillo', 'me gustaria hacer una colaboracion', 'con quien lo veo?']],
 
   // --- Dinero y lo que NO tiene confirmado ---

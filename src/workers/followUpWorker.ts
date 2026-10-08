@@ -92,12 +92,18 @@ async function deferIfOutOfWindow(
  * `{nombre}`: se reemplaza con el primer nombre del contacto, o se elimina
  * (limpiando espacios dobles) si no lo conocemos.
  */
-export function renderFollowUpMessage(template: string, contactName: string | null): string {
+/**
+ * Primer nombre del contacto, o '' si no parece un nombre. `contact_name` viene
+ * del perfil de WhatsApp, así que puede ser cualquier cosa (emojis, símbolos):
+ * mejor no saludar por nombre que mandar "Hola 💤💤💤🩵🩵".
+ */
+export function primerNombre(contactName: string | null): string {
   const primero = (contactName ?? '').trim().split(/\s+/)[0] ?? '';
-  // `contact_name` viene del perfil de WhatsApp, así que puede ser cualquier
-  // cosa (emojis, símbolos). Si no parece un nombre, mejor no saludar por
-  // nombre que mandar "Hola 💤💤💤🩵🩵".
-  const firstName = pareceNombreReal(primero) ? primero : '';
+  return pareceNombreReal(primero) ? primero : '';
+}
+
+export function renderFollowUpMessage(template: string, contactName: string | null): string {
+  const firstName = primerNombre(contactName);
   let text = template.replace(/\{nombre\}/gi, firstName);
   if (!firstName) {
     // Sin nombre quedan huecos tipo "Hola , ..." — los limpiamos.
@@ -298,7 +304,7 @@ async function handleFollowUp(data: FollowUpJobData): Promise<void> {
   let text: string;
   try {
     const horasDesdeClienteReal = (Date.now() - lastUserMs) / HOUR_MS;
-    text = await generateFollowUpMessage(history, attempt, fu.cadence_hours.length, horasDesdeClienteReal);
+    text = await generateFollowUpMessage(history, attempt, fu.cadence_hours.length, horasDesdeClienteReal, primerNombre(contact_name ?? null));
     if (!text) throw new Error('respuesta vacía');
     console.log(`[follow-up] generado contextual | contact=${contactId} attempt=${attempt}`);
   } catch (e) {

@@ -760,7 +760,8 @@ export async function generateFollowUpMessage(
   history: ChatMessage[],
   attempt: number,
   totalAttempts: number,
-  hoursIdle: number
+  hoursIdle: number,
+  nombre = ''
 ): Promise<string> {
   // Mismo corte de sesión que la conversación, medido contra el último mensaje
   // (medido contra ahora daría vacío: el follow-up sale horas después).
@@ -771,7 +772,13 @@ export async function generateFollowUpMessage(
     `[INSTRUCCIÓN INTERNA DE SEGUIMIENTO — esto NO es un mensaje del contacto, no lo trates como tal ni le respondas como si él hubiera escrito esto]\n` +
     `El contacto dejó de responder hace aproximadamente ${Math.round(hoursIdle)} horas. Este es tu mensaje de seguimiento #${attempt} de ${totalAttempts} máximo antes de dejarlo en paz.\n` +
     `Genera SOLO el texto exacto que le vas a mandar por WhatsApp — nada de explicaciones tuyas, nada de herramientas, nada de meta-comentarios.\n` +
-    `Basándote en TODA la conversación de arriba, retoma exactamente lo que quedó pendiente: si faltaba un dato para agendar (nombre, horario, motivo), pídelo directo; si estaba viendo información de algo específico y no llegó a cerrar, retómalo conectado a lo que preguntó; si ya tenía horarios ofrecidos sin elegir, recuérdaselos. NO mandes un saludo genérico tipo "¿pudiste ver la información?" a menos que genuinamente eso sea lo único que quedó pendiente — sé específico al contexto real de esta conversación.\n` +
+    // Pedido de Epazote (08/10/2026): el seguimiento llegaba seco, directo a la
+    // pregunta. Primero un saludo amable con su nombre, después la pregunta.
+    `Tono: muy amable y cálido. Empieza saludando otra vez, con su nombre si lo tienes ` +
+    `(${nombre ? `su perfil dice "${nombre}"; ` : ''}si en la conversación dio su nombre, usa ese), ` +
+    `por ejemplo "Hola ${nombre || '[nombre]'}, qué gusto saludarte de nuevo!". Si no tienes su nombre, saluda sin nombre. ` +
+    `Ya después del saludo haz la pregunta.\n` +
+    `Basándote en TODA la conversación de arriba, retoma exactamente lo que quedó pendiente: si faltaba un dato para agendar (nombre, horario, motivo), pídelo de forma concreta; si estaba viendo información de algo específico y no llegó a cerrar, retómalo conectado a lo que preguntó; si ya tenía horarios ofrecidos sin elegir, recuérdaselos. NO hagas una pregunta genérica tipo "¿pudiste ver la información?" a menos que genuinamente eso sea lo único que quedó pendiente — sé específico al contexto real de esta conversación.\n` +
     `Si por el contexto de la conversación es claro que este contacto NO es un cliente/paciente real (ej. es un proveedor ofreciendo un servicio, publicidad, spam, un número equivocado, alguien buscando trabajo), no generes ningún mensaje de seguimiento. En ese caso responde ÚNICAMENTE con el texto exacto NO_FOLLOW_UP (sin comillas, sin explicación, sin nada más alrededor) — nunca expliques tu razonamiento como si fuera el mensaje a enviar.`;
 
   const previos = toApiMessages(recentHistory);

@@ -36,7 +36,7 @@ el equipo").
 | 6 | Menú digital y rangos de precio | ⏳ Gustavo lo manda "en un ratito" | No da cifras |
 | 7 | Estacionamiento / acceso a Parque Centro | ✅ 07/10/2026 | Edificio Maia (el de la postrería), por el interior de Parque Centro, enfrente de Matsuri. Estacionamiento: Parque Centro o el de Buffalo Wild Wings |
 | 8 | Facturación | ⏳ Sin respuesta | Lo anota o escala |
-| 9 | Mascotas, terraza, menú en inglés | ⏳ Sin respuesta | Lo anota |
+| 9 | Mascotas, terraza, menú en inglés | ✅ 07/10/2026 | Sin mascotas; sí hay terraza (se anota como preferencia, el equipo la confirma); no hay menú en inglés |
 
 ## Setup en GHL (subcuenta Epazote)
 

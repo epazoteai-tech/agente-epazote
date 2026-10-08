@@ -34,6 +34,7 @@ module.exports = [
   ['se-ve-caro',          ['se ve muy bonito pero se ve carisimo', 'es que vamos con niños', 'mmm no se']],
   ['factura',             ['dan factura?', 'es para la empresa', 'ok']],
   ['pago-y-mascotas',     ['aceptan tarjeta?', 'y se puede llevar perro?', 'ok gracias']],
+  ['terraza',             ['tienen terraza?', 'queremos ir el sabado a las 10, somos 4, Paola Ruiz', 'nada especial, solo que sea afuera']],
   ['alergia',             ['mi hijo es alergico al cacahuate', 'el mole blanco tiene cacahuate?', 'seguro que no?']],
 
   // --- Menú, antojo y anuncios ---

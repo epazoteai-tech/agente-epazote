@@ -19,7 +19,10 @@ Actualizado: 09/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
   humana"): grupos de 8+, eventos privados, facturación especial, prensa, quejas,
   cancelaciones, "ya llegué", quien pida una persona.
 - Un solo seguimiento a las 3 h para reservas a medias, en ventana 10–21 h. Saluda de nuevo
-  con el nombre y después pregunta.
+  con el nombre y termina en UNA pregunta abierta de interés o de dudas ("Sigues con ganas de
+  venir el sábado?"). Nunca da por hecho que ya reserva ("para cuántas te pongo la mesa?") ni
+  agrega relleno después de la pregunta. Instrucción en `generateFollowUpMessage`
+  (`src/services/claude.ts`); respaldo en `follow_ups.messages` del yaml.
 
 ## Dónde vive
 

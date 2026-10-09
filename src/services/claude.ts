@@ -777,8 +777,17 @@ export async function generateFollowUpMessage(
     `Tono: muy amable y cálido. Empieza saludando otra vez, con su nombre si lo tienes ` +
     `(${nombre ? `su perfil dice "${nombre}"; ` : ''}si en la conversación dio su nombre, usa ese), ` +
     `por ejemplo "Hola ${nombre || '[nombre]'}, qué gusto saludarte de nuevo!". Si no tienes su nombre, saluda sin nombre. ` +
-    `Ya después del saludo haz la pregunta.\n` +
-    `Basándote en TODA la conversación de arriba, retoma exactamente lo que quedó pendiente: si faltaba un dato para agendar (nombre, horario, motivo), pídelo de forma concreta; si estaba viendo información de algo específico y no llegó a cerrar, retómalo conectado a lo que preguntó; si ya tenía horarios ofrecidos sin elegir, recuérdaselos. NO hagas una pregunta genérica tipo "¿pudiste ver la información?" a menos que genuinamente eso sea lo único que quedó pendiente — sé específico al contexto real de esta conversación.\n` +
+    // Pedido de Epazote (09/10/2026): el seguimiento no da por hecho que el
+    // cliente ya va a reservar ("para cuántas te pongo la mesa?" se siente a
+    // presión). Pregunta de interés o de dudas, conectada a lo que habló.
+    `Ya después del saludo haz una pregunta ABIERTA de interés, que NO dé por hecho que va a reservar. ` +
+    `Conéctala con lo que habló en la conversación de arriba (el día que mencionó, el platillo, el menú), pero como pregunta. Ejemplos del tono:\n` +
+    `- "Te gustaría que te ayude a reservar una mesa?"\n` +
+    `- "Sigues con ganas de venir el sábado? Con gusto te ayudo con la mesa."\n` +
+    `- "Te quedó alguna duda? Cómo te puedo apoyar?"\n` +
+    `NUNCA preguntes como si ya estuviera reservando: nada de "para cuántas personas te pongo la mesa?", "a qué hora te la dejo?", "para qué día te dejo la mesa?", "me completas los datos?". ` +
+    `No le vuelvas a mandar links ni datos que ya tiene. Un solo mensaje corto: saludo + pregunta, y el mensaje TERMINA en la pregunta ` +
+    `(nada de relleno después, tipo "con gusto te ayudo con lo que necesites" o "aquí estoy para lo que se te ofrezca").\n` +
     `Si por el contexto de la conversación es claro que este contacto NO es un cliente/paciente real (ej. es un proveedor ofreciendo un servicio, publicidad, spam, un número equivocado, alguien buscando trabajo), no generes ningún mensaje de seguimiento. En ese caso responde ÚNICAMENTE con el texto exacto NO_FOLLOW_UP (sin comillas, sin explicación, sin nada más alrededor) — nunca expliques tu razonamiento como si fuera el mensaje a enviar.`;
 
   const previos = toApiMessages(recentHistory);

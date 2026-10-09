@@ -178,7 +178,7 @@ follow_ups:
   window_end_hour: 21
   cadence_hours: [3]
   messages:
-    - "Hola {nombre}, se nos quedó a medias tu reserva en Epazote. Me completas los datos que faltan y se la paso al equipo para que te confirme?"
+    - "Hola {nombre}, qué gusto saludarte de nuevo! Te gustaría que te ayude a reservar una mesa en Epazote, o te quedó alguna duda?"
   # Solo mientras siga en la etapa de entrada (lección 11 de crear-bot-ghl).
   entry_stage: Solicitud recibida
 

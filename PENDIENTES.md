@@ -33,7 +33,7 @@ el equipo").
 | 3 | Formas de pago | ✅ Efectivo, tarjeta y transferencia (en el prompt) | Lo dice |
 | 4 | Objeción más común | ✅ "A veces no contestan el teléfono" (guion nuevo en `<manejo_de_objeciones>`) | Ofrece el chat como el camino que sí contesta |
 | 5 | Quién recibe el aviso de reservas del bot | ✅ **Mony** (decisión de Jorge 29/09; Gustavo confirma las de redes, pero el aviso va a Mony) | |
-| 6 | Menú digital y rangos de precio | ⏳ Gustavo lo manda "en un ratito" | No da cifras |
+| 6 | Menú digital y rangos de precio | ✅ 05/10/2026 | Menús completos en el prompt y PDF en `/menu` |
 | 7 | Estacionamiento / acceso a Parque Centro | ✅ 07/10/2026 | Edificio Maia (el de la postrería), por el interior de Parque Centro, enfrente de Matsuri. Estacionamiento: Parque Centro o el de Buffalo Wild Wings |
 | 8 | Facturación | ⏳ Sin respuesta | Lo anota o escala |
 | 9 | Mascotas, terraza, menú en inglés | ✅ 07/10/2026 | Sin mascotas; sí hay terraza (se anota como preferencia, el equipo la confirma); no hay menú en inglés |
@@ -109,11 +109,11 @@ Es best-effort: si falla, la reserva queda en GHL igual y el log dice `[mesa-con
 
 ## Mesa de Control — fase 1 (30/09/2026)
 
-Vive dentro del bot (patrón del KDS de Viking Food): `https://agente-epazote-production.up.railway.app/mesa/`, protegida con `MESA_PIN` (variable de Railway; sin ella la puerta queda cerrada para todos y el bot sigue funcionando).
+Vive dentro del bot (patrón del KDS de Viking Food): `https://epazote.sellerstudio.mx/mesa` (desde 06/10/2026; antes en el dominio de Railway), protegida con `MESA_PIN` (variable de Railway; sin ella la puerta queda cerrada para todos y el bot sigue funcionando).
 
 - **Día:** reservas del día con Confirmar / Cancelar → Llegó / No llegó → Cerrar mesa (total a mano). Walk-in en dos toques (personas + cómo se enteró). Reserva por teléfono (entra confirmada). Corregir hora o personas.
 - **Cada cambio de estado mueve la tarjeta en GHL** (Confirmada / Asistió / No asistió): Mony hace una sola acción y el recordatorio por plantilla, que cuelga de "Confirmada", funciona solo.
-- **Próximas:** 14 días.
+- **Próximas:** 14 días, más arriba la cola "Atención humana · por confirmar" con las mesas escaladas (09/10/2026).
 - **Resumen:** embudo, show rate (solo sobre reservas ya decididas), ticket por turno y por origen, ROAS por campaña (gasto mensual prorrateado), walk-ins por cómo se enteraron, CSV.
 - **Campañas:** nombre + palabra clave del mensaje precargado del wa.link + gasto mensual. Gana la palabra clave más específica.
 - Las reservas del bot entran solas (`guardarReservaDelBot`); un "CAMBIO de la solicitud anterior" corrige la misma fila.

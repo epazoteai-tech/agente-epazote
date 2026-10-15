@@ -58,7 +58,9 @@ Deploy: ✅ Railway `agente-epazote-production.up.railway.app`, `/health` OK con
 
 - ✅ Campo `reserva_fecha_dia` (tipo FECHA, id `qkpp0zGMFOfo6TOdPH2O`), lo llena el bot al registrar. `reserva_fecha` ahora es "sábado 3 de octubre".
 - ✅ El prompt conoce la plantilla y sus botones ("Ahí estaremos" / "Necesito cambiarla").
-- ⏳ Jorge: plantilla `recordatorio_reserva` (Utility, es_MX) aprobada por Meta + Workflow con trigger de fecha sobre `reserva_fecha_dia`, **filtrado a la etapa Confirmada**.
+- ⏳ Jorge: plantilla `recordatorio_reserva` (Utility, es_MX) aprobada por Meta + Workflow "RECORDATORIO RESERVA": Custom Date Reminder sobre `reserva_fecha_dia` (Before 1 día, con "Match on the year" marcado) → Wait 12:00 pm → If/Else **Tags incluye `reserva-confirmada`** → plantilla.
+- ✅ 14/10/2026: el If/Else de un Workflow que dispara por fecha no ofrece condiciones de oportunidad, así que el recordatorio cuelga de la etiqueta `reserva-confirmada` (creada en GHL, id `4oKeQNFe7ApEBwesnpOU`). La pone la Mesa al confirmar y la quita al cancelar, regresar a solicitada, llegar o no llegar; el bot la quita en cada `registrar_reserva` (solicitud nueva o CAMBIO). Antes, cancelar en la Mesa dejaba la tarjeta en "Confirmada" y el recordatorio habría salido a quien canceló.
+- Ojo: si alguien mueve una tarjeta a "Confirmada" a mano en GHL (no desde la Mesa), no lleva etiqueta. Si eso pasa seguido: Workflow "Pipeline Stage Changed → Confirmada → Add tag".
 - ⏳ Probar con una reserva a varios días y mirar el reloj (E124): el recordatorio no debe salir al instante.
 
 ## Pruebas antes de entregar (Paso 4 adaptado)

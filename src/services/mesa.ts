@@ -49,6 +49,18 @@ export function campanaDeOrigen(origen: string, campanas: Campana[]): Campana | 
   return mejor;
 }
 
+/**
+ * Etiqueta de GHL de la que cuelga el recordatorio por plantilla. El Workflow
+ * dispara por fecha (contacto, no oportunidad), así que su If/Else no puede
+ * leer la etapa: lee esta etiqueta. Solo la lleva quien tiene la mesa
+ * confirmada HOY; cancelar, regresar a solicitada, llegar o no llegar la quita.
+ */
+export const ETIQUETA_CONFIRMADA = 'reserva-confirmada';
+
+export function accionEtiquetaConfirmada(estado: string): 'poner' | 'quitar' {
+  return estado === 'confirmada' ? 'poner' : 'quitar';
+}
+
 /** Es un cambio de una solicitud anterior (así lo marca el bot en `ocasion`). */
 export function esCambio(ocasion: string): boolean {
   return /^\s*cambio de la solicitud anterior/i.test(ocasion ?? '');

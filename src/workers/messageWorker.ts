@@ -30,6 +30,7 @@ import {
   buscarCitasDelContacto,
   cancelarCita,
   reponerTags,
+  removeTagsFromContact,
   zonaDelNegocio,
   FreeSlot,
   CitaFutura,
@@ -50,7 +51,7 @@ import { contactoBloqueadoAsync, bloquearContacto } from '../blocklist';
 import { esMensajeRepetidoDeBot, REPETICIONES_DE_BOT } from '../loop-guard';
 import { pareceNombreReal } from '../nombres';
 import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu, quitarCalificativos } from '../services/reservas';
-import { guardarReservaDelBot, datosParaLaMesa, guardarEscaladaEnMesa } from '../services/mesa';
+import { guardarReservaDelBot, datosParaLaMesa, guardarEscaladaEnMesa, ETIQUETA_CONFIRMADA } from '../services/mesa';
 
 /**
  * Estado compartido entre las tools de UN mismo turno (un job del worker).
@@ -1488,6 +1489,11 @@ async function handleRegistrarReserva(
     (err) => console.warn(`[tool:registrar_reserva] nota falló: ${(err as Error).message}`)
   );
   if (res.stage) autoMoveStage(contactId, res.stage, turn.leadLabel).catch(() => {});
+  // Una solicitud nueva o un CAMBIO ya no está confirmada: sin esto, quien
+  // movió su mesa recibiría el recordatorio de la confirmación anterior.
+  removeTagsFromContact(contactId, [ETIQUETA_CONFIRMADA]).catch((err) =>
+    console.warn(`[tool:registrar_reserva] no se pudo quitar ${ETIQUETA_CONFIRMADA}: ${(err as Error).message}`)
+  );
   // Mesa de Control (misma base). Best-effort: si falla, la solicitud ya está
   // en GHL y Mony ya tiene el aviso; se pierde solo la fila del panel.
   guardarReservaDelBot(

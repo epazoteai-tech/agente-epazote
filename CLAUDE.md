@@ -80,6 +80,8 @@ Actualizado: 09/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
 - Carga manual de escaladas viejas: `POST /api/mesa/reservas/escalada` con
   `{contact_id, nombre, fecha, hora, personas, ocasion, motivo}` (header `x-mesa-pin`).
 - Cambiar el estado en el panel mueve la tarjeta de GHL (Confirmada / Asistió / No asistió).
+  También pone o quita la etiqueta `reserva-confirmada`, de la que cuelga el recordatorio por
+  plantilla (cancelar no mueve la tarjeta: sin la etiqueta, el recordatorio le llegaba a quien canceló).
 - **Candado del PIN detrás de Cloudflare:** la llave del freno es `cf-connecting-ip`, pero
   solo si la petición viene de un rango de Cloudflare (si no, cualquiera la falsificaría por
   el dominio de Railway). Abrir la página sin PIN no cuenta como intento. Antes de esto, unas

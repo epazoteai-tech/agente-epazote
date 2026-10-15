@@ -12,13 +12,22 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../db/client';
 import { getConfig } from '../config';
 import { minutosDe, turnoDe } from '../services/reservas';
-import { campanaDeOrigen, embudo, gastoDelPeriodo, guardarEscaladaEnMesa, Campana } from '../services/mesa';
+import {
+  campanaDeOrigen,
+  embudo,
+  gastoDelPeriodo,
+  guardarEscaladaEnMesa,
+  Campana,
+  ETIQUETA_CONFIRMADA,
+  accionEtiquetaConfirmada,
+} from '../services/mesa';
 import { capiConfigurado, verificarMeta, datasetDeLaWaba } from '../services/capi';
 import {
   findContactOpportunity,
   moveOpportunityToStage,
   createOpportunity,
 } from '../services/ghl';
+import { addTagsToContact, removeTagsFromContact } from '../services/ghl-calendar';
 
 export const mesaRouter = Router();
 
@@ -104,6 +113,25 @@ async function moverTarjeta(contactId: string | null, estado: Estado, nombre: st
     console.log(`[mesa] tarjeta → "${etapaNombre}" | contact=${contactId}`);
   } catch (e) {
     console.warn(`[mesa] no se pudo mover la tarjeta a "${etapaNombre}" | contact=${contactId}: ${(e as Error).message}`);
+  }
+}
+
+/**
+ * Pone o quita la etiqueta del recordatorio. No basta con la etapa: al cancelar
+ * la tarjeta no se mueve (no hay etapa "Cancelada") y se quedaba en
+ * "Confirmada", así que el recordatorio le habría llegado a quien ya canceló.
+ * Y al re-confirmar una que nunca salió de "Confirmada" no hay cambio de etapa
+ * que un Workflow pueda escuchar. Best-effort, como moverTarjeta.
+ */
+async function sincronizarEtiqueta(contactId: string | null, estado: Estado): Promise<void> {
+  if (!contactId) return;
+  const accion = accionEtiquetaConfirmada(estado);
+  try {
+    if (accion === 'poner') await addTagsToContact(contactId, [ETIQUETA_CONFIRMADA]);
+    else await removeTagsFromContact(contactId, [ETIQUETA_CONFIRMADA]);
+    console.log(`[mesa] etiqueta ${ETIQUETA_CONFIRMADA}: ${accion} | contact=${contactId}`);
+  } catch (e) {
+    console.warn(`[mesa] no se pudo ${accion} la etiqueta ${ETIQUETA_CONFIRMADA} | contact=${contactId}: ${(e as Error).message}`);
   }
 }
 
@@ -212,6 +240,7 @@ mesaRouter.post(
       return;
     }
     void moverTarjeta(rows[0].contact_id, estado, rows[0].nombre);
+    void sincronizarEtiqueta(rows[0].contact_id, estado);
     res.json({ ok: true, reserva: rows[0] });
   })
 );

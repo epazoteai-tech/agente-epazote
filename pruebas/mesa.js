@@ -7,7 +7,7 @@
  * (el ROAS por creativo es la métrica que se le vende al cliente) y un show
  * rate que cuente como no-show lo que todavía no pasa.
  */
-const { campanaDeOrigen, embudo, gastoDelPeriodo, esCambio, ocasionLimpia } = require('../dist/services/mesa');
+const { campanaDeOrigen, embudo, gastoDelPeriodo, esCambio, ocasionLimpia, accionEtiquetaConfirmada, ETIQUETA_CONFIRMADA } = require('../dist/services/mesa');
 
 let fallas = 0;
 function check(nombre, real, esperado) {
@@ -26,6 +26,14 @@ check('la corta sigue funcionando sola', campanaDeOrigen('vi lo del cabrito', ca
 check('sin coincidencia es directo', campanaDeOrigen('hola, info', camps), null);
 check('origen vacío es directo', campanaDeOrigen('', camps), null);
 check('palabra clave vacía no atrapa todo', campanaDeOrigen('hola', [C(9, 'Rota', '  ')]), null);
+
+// Etiqueta del recordatorio: solo la conserva quien tiene la mesa confirmada.
+check('etiqueta del recordatorio se llama reserva-confirmada', ETIQUETA_CONFIRMADA, 'reserva-confirmada');
+check('confirmar pone la etiqueta', accionEtiquetaConfirmada('confirmada'), 'poner');
+check('cancelar la quita (la tarjeta no se mueve)', accionEtiquetaConfirmada('cancelada'), 'quitar');
+check('regresar a solicitada la quita', accionEtiquetaConfirmada('solicitada'), 'quitar');
+check('llegó la quita', accionEtiquetaConfirmada('llego'), 'quitar');
+check('no llegó la quita', accionEtiquetaConfirmada('no_llego'), 'quitar');
 
 const F = (estado, canal = 'bot', total = null) => ({ estado, canal, total });
 const e = embudo([

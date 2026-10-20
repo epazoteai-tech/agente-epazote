@@ -5,7 +5,7 @@ Bot de WhatsApp de **Restaurante Epazote** (Saltillo) sobre GoHighLevel + Claude
 servicio. Nació de la plantilla `SKILLS/bot-ghl-template`, pero ya diverge bastante: los
 cambios se hacen aquí, no en la plantilla.
 
-Actualizado: 09/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
+Actualizado: 19/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
 
 ## Qué hace (y qué NUNCA hace)
 
@@ -90,6 +90,40 @@ Actualizado: 09/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
   (cabrito, machacado, ceviche, durazno; gana la más específica). El gasto mensual se captura
   a mano en el panel.
 
+## Recordatorio de reserva (Workflow de GHL "RECORDATORIO RESERVA")
+
+Lo arma Jorge en GHL; el código solo mantiene la etiqueta. Estado al 19/10/2026: en construcción.
+
+1. **Disparador:** Custom date reminder → campo `reserva_fecha_dia` (tipo DATE, id
+   `qkpp0zGMFOfo6TOdPH2O`) → **Before 1 día**, con **"Match on the year along with the day and
+   month" marcado** (sin la casilla GHL lo repite cada año, como cumpleaños). NO `reserva_fecha`:
+   es texto ("sábado 3 de octubre") y solo sirve como variable de la plantilla.
+2. **Wait** hasta las 12:00 pm (el disparador no tiene hora).
+3. **If/Else:** Contact Details → Tags → Includes → `reserva-confirmada`. Rama None vacía.
+4. **Send WhatsApp Template** `recordatorio_reserva` (Utility, es_MX): {{1}} first_name,
+   {{2}} `reserva_fecha`, {{3}} `reserva_hora`, {{4}} `reserva_personas`. Botones "Ahí estaremos" /
+   "Necesito cambiarla": el texto tiene que coincidir con `configuracion/prompt.md` (`<mensajes_que_no_ves>`).
+5. Allow re-entry encendido.
+
+Por qué así y no con "Pipeline Stage Changed → Confirmada":
+- Con el cambio de etapa + espera, una mesa confirmada hoy para mañana recibía el recordatorio
+  al instante (E124). El disparador por fecha no tiene ese problema.
+- Un Workflow que dispara por fecha arranca por CONTACTO: su If/Else **no ofrece condiciones de
+  oportunidad** (pipeline/etapa). Por eso la condición es la etiqueta.
+- **Quién mueve `reserva-confirmada`** (etiqueta creada en GHL, id `4oKeQNFe7ApEBwesnpOU`,
+  commit `797892d`): la Mesa la pone al confirmar y la quita al cancelar, regresar a
+  solicitada, llegó o no llegó (`sincronizarEtiqueta` en `src/routes/mesa.ts`,
+  `accionEtiquetaConfirmada` en `src/services/mesa.ts`). El bot la quita en cada
+  `registrar_reserva` (solicitud nueva o CAMBIO), así un cambio no recibe el recordatorio de la
+  confirmación vieja.
+- Hueco conocido: una tarjeta movida a "Confirmada" a mano en GHL (no desde la Mesa) no lleva
+  etiqueta. Si pasa seguido: Workflow "Pipeline Stage Changed → Confirmada → Add tag".
+- Si se confirma una mesa para mañana después de las 12:00, no recibe recordatorio (aceptado).
+
+Probar antes de dar por bueno: reserva a 2–3 días en Confirmada (no debe salir al instante),
+reserva para mañana (sale a las 12), cancelar en la Mesa (se quita la etiqueta), y tocar los dos
+botones desde un teléfono de prueba (que la respuesta le llegue al bot como texto por el webhook).
+
 ## Meta Conversions API
 
 - Purchase al cerrar la mesa con total, 10 min de espera, barredor cada 60 s, 5 intentos,
@@ -100,6 +134,29 @@ Actualizado: 09/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
 - Pendiente: el token de CAPI no tiene permiso sobre la WABA ("(#200) You do not have
   permission"). Para leer o ligar el dataset de la WABA hace falta un token de usuario del
   sistema con `whatsapp_business_management`. `GET /api/mesa/meta/estado` diagnostica.
+
+### Lo que Meta recibe de verdad (revisión del 14/10/2026)
+
+Jorge creía que las campañas ya optimizaban para "los clientes que sí van". **No es así:**
+- **Ninguna campaña usa el dataset.** Cuenta publicitaria "Epazote" (`1207618554190279`):
+  los conjuntos activos optimizan por conversaciones iniciadas (Sellers - AI - Platillos, por
+  WhatsApp; Astral - Cumpleaños), por clics o por alcance, y todos tienen `pixel_id` nulo. El
+  Purchase sirve para medir, no para decidir a quién se le muestran los anuncios.
+- **Casi no hay datos:** de 81 consumos cerrados desde septiembre, solo 3 se mandaron a Meta.
+  Los otros 78 eran walk-ins sin teléfono (`capi_respuesta.omitido`). 0 por clic de anuncio.
+- **El dataset de la cuenta, "Epazote Saltillo Event Data" (`2095461901251034`), no registra
+  ningún evento en 28 días** (`server_last_fired_time` vacío). Revisar que `META_DATASET_ID`
+  en Railway sea ese ID: los 3 Purchase pudieron irse a otro dataset. "Token y dataset aceptan
+  eventos" en `/meta/estado` solo prueba la conexión, no que lleguen al dataset correcto.
+- Con este volumen (3 compras, 9 reservas confirmadas en mes y medio) Meta no puede optimizar
+  por compra: necesita ~50 por semana por conjunto. Dejar las campañas en conversaciones.
+
+Orden propuesto: (1) capturar el WhatsApp de los walk-ins al cerrar la mesa — la palanca más
+grande, encaja con las campañas de cumpleaños; (2) corregir `META_DATASET_ID` si no coincide;
+(3) con 100+ teléfonos, público personalizado de los que van + lookalike + exclusión en
+captación; (4) token con `whatsapp_business_management` para atribuir compras al clic del
+anuncio Click-to-WhatsApp y, con volumen, optimizar por compra. Al 19/10/2026 Jorge no ha
+pedido ninguna de estas; tampoco quiso el evento `Schedule` al confirmar.
 
 ## Pruebas
 
@@ -138,3 +195,7 @@ Actualizado: 09/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
 - Fase 2: foto del ticket con Vision (faltan 3–5 fotos reales).
 - Aviso a Mony por plantilla `aviso_reserva_equipo`: falta elegir ruta (Workflow con
   notificación interna vs. el bot mandando la plantilla).
+- Recordatorio de reserva: plantilla `recordatorio_reserva` aprobada por Meta y Workflow
+  publicado y probado (ver la sección del recordatorio).
+- Meta: revisar `META_DATASET_ID` en Railway contra `2095461901251034`, y decidir si se captura
+  el teléfono de los walk-ins (ver "Lo que Meta recibe de verdad").

@@ -181,6 +181,11 @@ follow_ups:
     - "Hola {nombre}, qué gusto saludarte de nuevo! Te gustaría que te ayude a reservar una mesa en Epazote, o te quedó alguna duda?"
   # Solo mientras siga en la etapa de entrada (lección 11 de crear-bot-ghl).
   entry_stage: Solicitud recibida
+  # Mínimo de horas entre un follow-up y el de la tanda siguiente. Cada vez
+  # que el cliente contesta (aunque sea "gracias") se programa otra tanda; sin
+  # este tope, a quien contesta por cortesía le llega otro recordatorio cada
+  # vez (E186: 3 recordatorios en 18h en el bot del Dr. Romero).
+  min_gap_hours: 48
 
 # ===========================================================================
 # Escalación: grupos grandes, eventos, facturación especial, prensa/colabs,

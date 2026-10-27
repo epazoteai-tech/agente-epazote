@@ -443,6 +443,35 @@ const SESION_HORAS = 48;
 const MAX_MENSAJES_CONTEXTO = 20;
 
 /**
+ * Cache del prompt por 1 hora (no los 5 min de default). En WhatsApp el
+ * contacto tarda más de 5 min en contestar y el prompt (~10k tokens) se volvía
+ * a pagar completo; con 1 h también se lo heredan unos contactos a otros.
+ * El SDK 0.36 no trae `ttl` en sus tipos, de ahí el cast.
+ */
+const CACHE_1H = { type: 'ephemeral', ttl: '1h' } as Anthropic.CacheControlEphemeral;
+
+/**
+ * Copia de los mensajes con un punto de cache (5 min) en el último bloque,
+ * para que la vuelta después de una tool (registrar_reserva, escalar) lea el
+ * historial del cache en vez de pagarlo entero otra vez. Va después del de
+ * 1 h, como pide la API. No toca el arreglo original.
+ */
+function conCacheEnHistorial(msgs: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  if (msgs.length === 0) return msgs;
+  const ultimo = msgs[msgs.length - 1];
+  const bloques =
+    typeof ultimo.content === 'string'
+      ? [{ type: 'text' as const, text: ultimo.content }]
+      : [...ultimo.content];
+  if (bloques.length === 0) return msgs;
+  bloques[bloques.length - 1] = {
+    ...bloques[bloques.length - 1],
+    cache_control: { type: 'ephemeral' },
+  } as (typeof bloques)[number];
+  return [...msgs.slice(0, -1), { ...ultimo, content: bloques } as Anthropic.MessageParam];
+}
+
+/**
  * Mensajes de la sesión vigente (lo que ve el modelo) y si el turno la abre.
  * Lo recortado NO se borra de la base: solo decide qué ve el modelo.
  * `refMs` es el momento contra el que se mide el último hueco: ahora, para un
@@ -583,7 +612,7 @@ export async function getClaudeResponse(
     {
       type: 'text',
       text: buildSystemPrompt(),
-      cache_control: { type: 'ephemeral' },
+      cache_control: CACHE_1H,
     },
     {
       type: 'text',
@@ -634,7 +663,7 @@ export async function getClaudeResponse(
         max_tokens: cfg.max_response_tokens,
         system: systemBlocks,
         tools: TOOLS,
-        messages: currentMessages,
+        messages: conCacheEnHistorial(currentMessages),
       });
     } catch (err) {
       console.error(`[claude] API error on iteration ${iterations}:`, (err as Error).message);
@@ -800,7 +829,7 @@ export async function generateFollowUpMessage(
 
   const cfgAll = getConfig();
   const systemBlocks: Anthropic.TextBlockParam[] = [
-    { type: 'text', text: buildSystemPrompt(), cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: buildSystemPrompt(), cache_control: CACHE_1H },
   ];
   if (cfgAll.calendars || cfgAll.reservations || cfgAll.follow_ups) {
     systemBlocks.push({ type: 'text', text: getDateContext() });

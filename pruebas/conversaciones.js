@@ -38,6 +38,7 @@ module.exports = [
   ['ubicacion',           ['donde estan?', 'en la mañana']],
   ['ubicacion-tarde',     ['como llego?', 'en la tarde']],
   ['ubicacion-platillos', ['donde quedan?', 'si, cuentame de los platillos']],
+  ['ya-tiene-reserva',    ['hola, ya tengo reserva para el sabado a las 10', 'se puede llevar pastel?']],
   ['encargada',           ['ya tengo reserva para hoy a las 2', 'cuando llegue con quien me dirijo?', 'y si no esta?']],
   ['alergia',             ['mi hijo es alergico al cacahuate', 'el mole blanco tiene cacahuate?', 'seguro que no?']],
 

@@ -371,12 +371,33 @@ const CALIFICATIVO = new RegExp(
   'gi'
 );
 
+// Sin verbo: "…con salsa roja tatemada, uno de los favoritos para desayunar."
+// (27/10/2026). Se quita desde la coma.
+const CALIFICATIVO_APOSICION = new RegExp(
+  ',\\s*(?:uno|una)\\s+de\\s+(?:los|las)\\s+(?:favorit[oa]s|consentid[oa]s|más\\s+pedid[oa]s)[^.!?:\\n]*',
+  'gi'
+);
+
+// Opinión del menú entero: "El menú nuevo está buenísimo." (27/10/2026). Si
+// solo se quitara el calificativo quedaría "El menú nuevo.", así que se va la
+// oración completa.
+const OPINION_DEL_MENU = new RegExp(
+  '(?:^|(?<=[.!?]\\s*))[^.!?\\n]*\\s(?:men[uú]|carta)(?=[\\s.,!?])[^.!?\\n]*\\s(?:es|está)\\s+(?:muy\\s+)?' +
+    '(?:buenísim[oa]|delicios[oa]|increíble|una\\s+delicia|de\\s+lo\\s+mejor)[^.!?\\n]*[.!?]?[ \\t]*',
+  'gi'
+);
+
 /** Quita "es de los favoritos…", "es una delicia…", "de lo mejor…" y deja el resto. */
 export function quitarCalificativos(text: string): { text: string; quitados: string[] } {
   const quitados: string[] = [];
-  const salida = text.replace(CALIFICATIVO, (m) => {
+  const quitar = (m: string) => {
     quitados.push(m.trim());
     return '';
-  });
-  return { text: salida, quitados };
+  };
+  const salida = text
+    .replace(OPINION_DEL_MENU, quitar)
+    .replace(CALIFICATIVO_APOSICION, quitar)
+    .replace(CALIFICATIVO, quitar)
+    .replace(/[ \t]+\n/g, '\n');
+  return { text: quitados.length ? salida.trim() : text, quitados };
 }

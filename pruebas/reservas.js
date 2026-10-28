@@ -94,6 +94,10 @@ for (const [ent, esp] of [
   ['El *Cabrito prensado* es de los platos que más enamoran: cocinado lento con xoconostles.', 'El *Cabrito prensado*: cocinado lento con xoconostles.'],
   ['El *Cabrito prensado*, cocinado lento en salsa de xoconostles con mole blanco artesanal.', null],
   ['Los desayunos fuertes van de $179 a $354.', null],
+  // 27/10/2026
+  ['El *Machacado Epazote* salseado en sartén de hierro con salsa roja tatemada, uno de los favoritos para desayunar. El menú de desayunos se sirve hasta las 2:00 pm.', 'El *Machacado Epazote* salseado en sartén de hierro con salsa roja tatemada. El menú de desayunos se sirve hasta las 2:00 pm.'],
+  ['Tenemos el *Ceviche de pescado*, robalo fresco en leche de tigre. El menú nuevo está buenísimo.\n\nPara qué día lo estás pensando?', 'Tenemos el *Ceviche de pescado*, robalo fresco en leche de tigre.\n\nPara qué día lo estás pensando?'],
+  ['El menú de desayunos se sirve hasta las 2:00 pm.', null],
   ['Qué gusto, que lo disfruten mucho! 😊', null],
 ]) {
   const o = quitarCalificativos(ent).text;

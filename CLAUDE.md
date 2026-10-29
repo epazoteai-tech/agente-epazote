@@ -5,7 +5,7 @@ Bot de WhatsApp de **Restaurante Epazote** (Saltillo) sobre GoHighLevel + Claude
 servicio. Nació de la plantilla `SKILLS/bot-ghl-template`, pero ya diverge bastante: los
 cambios se hacen aquí, no en la plantilla.
 
-Actualizado: 19/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
+Actualizado: 29/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
 
 ## Qué hace (y qué NUNCA hace)
 
@@ -23,6 +23,15 @@ Actualizado: 19/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
   venir el sábado?"). Nunca da por hecho que ya reserva ("para cuántas te pongo la mesa?") ni
   agrega relleno después de la pregunta. Instrucción en `generateFollowUpMessage`
   (`src/services/claude.ts`); respaldo en `follow_ups.messages` del yaml.
+- **Respuestas fijas que pidió Jorge** (todas en `configuracion/prompt.md`):
+  - *Ubicación:* la frase del Edificio Maia y cierra con "Te gustaría que te cuente de los
+    platillos, o buscabas venir en la mañana o en la tarde?", **no** ofreciendo la reserva
+    (excepción anotada en `<regla_de_avance>`). Si contesta mañana/tarde, un platillo de la
+    casa de ese turno + horario + "para qué día". Que el machacado "sale del comal" es cierto.
+  - *Con quién dirigirse:* "Al llegar pregunta por Mónica. Si no está, dile a quien te
+    reciba que hiciste tu reserva por WhatsApp."
+  - *Ya tiene reserva:* contesta lo que pregunta, sin volver a registrar, sin revisar
+    horario ni si la hora ya pasó, sin decir la hora actual y sin darla por confirmada.
 
 ## Dónde vive
 
@@ -77,6 +86,13 @@ Actualizado: 19/10/2026. Historial de decisiones y bloqueantes: `PENDIENTES.md`.
   sean para dentro de un mes) y no deja confirmar sin día, hora y personas. Una sola tarjeta
   por familia: una escalada sobre una solicitud viva la marca; un registro completo llena una
   escalada sin día.
+- **Canal de cada reserva** (`reservas.canal`): `bot` (WhatsApp), `walk-in` y `telefono`
+  (capturada a mano en la Mesa: confirmada al crearse, sin `contact_id`). Una reserva
+  `telefono` no tiene conversación detrás. Atribución a campaña = palabra clave o texto del
+  anuncio en el primer mensaje; quien vio el anuncio y escribió "hola" cuenta como bot.
+- **No hay forma de borrar una reserva** desde la Mesa: solo cambiar estado (y eso mueve la
+  tarjeta de GHL y la etiqueta). Los duplicados se borran en Railway → Postgres → Query. El
+  `DATABASE_URL` del `.env` local es `localhost`, no producción.
 - Carga manual de escaladas viejas: `POST /api/mesa/reservas/escalada` con
   `{contact_id, nombre, fecha, hora, personas, ocasion, motivo}` (header `x-mesa-pin`).
 - Cambiar el estado en el panel mueve la tarjeta de GHL (Confirmada / Asistió / No asistió).
@@ -158,6 +174,21 @@ captación; (4) token con `whatsapp_business_management` para atribuir compras a
 anuncio Click-to-WhatsApp y, con volumen, optimizar por compra. Al 19/10/2026 Jorge no ha
 pedido ninguna de estas; tampoco quiso el evento `Schedule` al confirmar.
 
+## Costo de la API (cache)
+
+Cambiado el 27/10/2026 (commit `4aefbb4`), en `src/services/claude.ts`:
+- El system prompt (~10k tokens) lleva `CACHE_1H` (`ttl: '1h'`) en el turno y en el
+  seguimiento. Con 5 min se volvía a pagar completo cada que el contacto tardaba en
+  contestar; con 1 h además se comparte entre contactos. Es GA, sin header beta. El SDK 0.36
+  no trae `ttl` en sus tipos: por eso el cast.
+- `conCacheEnHistorial` pone un punto de 5 min en el último bloque de los mensajes, para que
+  la vuelta después de una tool lea el historial del cache. Va **después** del de 1 h (la
+  API exige 1 h antes que 5 min).
+- Verificar en los logs de Railway: `cacheW` > 0 en la primera respuesta y `cacheR` > 0 en
+  las siguientes dentro de la hora. Al 29/10 no se ha revisado.
+- Siguientes palancas, sin hacer: recortar el menú escrito en el prompt (medir con
+  `test:modelo`) y Haiku (descartado: violaciones al medir).
+
 ## Pruebas
 
 - `npm test` — build + pruebas puras (reservas, mesa, capi, atención humana, guardias,
@@ -171,6 +202,11 @@ pedido ninguna de estas; tampoco quiso el evento `Schedule` al confirmar.
   (`/tmp/claude-501/pglite/servidor.mjs`). Solo acepta **una conexión**: en arneses poner
   `db.options.max = 1`, si no, salen `ECONNRESET` falsos.
 - Modelo en producción: `claude-sonnet-4-6` (Haiku tuvo violaciones menores al medir).
+- `test:modelo` arma su propia llamada (`pruebas/medir-modelo.js`): prueba el prompt y las
+  tools, **no** el `messages.create` de `claude.ts` (cache, guardias). Usa la
+  `ANTHROPIC_API_KEY` del `.env` local, que tiene que ser la misma que la de Railway.
+- Las conversaciones de prueba corren con la hora real: una que dice "hoy a las 2" de
+  noche se comporta distinto que de día.
 
 ## Lecciones de este bot (además de las de la skill `errores-bot`)
 
@@ -185,6 +221,17 @@ pedido ninguna de estas; tampoco quiso el evento `Schedule` al confirmar.
   si no, adorna ("centro comercial").
 - Si algo del panel "no aparece", revisar primero el filtro de fechas antes de culpar a la
   atribución.
+- **Bot mudo con el servidor sano (27/10/2026):** `/health` respondía y los mensajes
+  llegaban, pero cada turno fallaba con `401 invalid x-api-key` (la key de Anthropic dejó de
+  servir; Jorge puso una nueva en Railway y en el `.env`). Si el bot no contesta, buscar
+  `[claude] API error` en los logs antes de tocar código. Los mensajes quedan pendientes y
+  se reintentan solos al arreglarlo.
+- Pedirle al modelo que compare la hora de la reserva con la actual lo hace **narrar** su
+  razonamiento en el chat ("Son las 10:51 pm… confirmo amablemente"). Mejor quitar la
+  comparación que pedirle que no la diga.
+- `quitarCalificativos` ya quita también ", uno de los favoritos…" sin verbo y la oración
+  completa que opina del menú ("El menú nuevo está buenísimo."). Otra vez `\b` con acentos
+  ("menú") no funcionó: límites explícitos (E178).
 
 ## Pendientes vivos (ver `PENDIENTES.md` para el detalle)
 
@@ -199,3 +246,10 @@ pedido ninguna de estas; tampoco quiso el evento `Schedule` al confirmar.
   publicado y probado (ver la sección del recordatorio).
 - Meta: revisar `META_DATASET_ID` en Railway contra `2095461901251034`, y decidir si se captura
   el teléfono de los walk-ins (ver "Lo que Meta recibe de verdad").
+- Duplicados del bot en la Mesa (28/10/2026): Jorge iba a correr en Railway
+  `DELETE FROM reservas WHERE id IN (14, 28, 200) AND canal = 'bot' AND total IS NULL;`
+  (debe decir `DELETE 3`). Sin confirmar. Si se repite seguido: botón de borrar en la Mesa
+  solo para reservas sin ticket.
+- Revisar `cacheR`/`cacheW` en los logs (ver "Costo de la API").
+- Por qué dejó de servir la API key el 27/10: si Anthropic la revocó por filtración, buscar
+  dónde quedó expuesta.

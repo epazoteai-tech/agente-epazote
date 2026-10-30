@@ -45,6 +45,8 @@ module.exports = [
   // --- Menú, antojo y anuncios ---
   // Caso real 05/10/2026: anuncio Click-to-WhatsApp + "Menú" 8 s después, llegan en el mismo turno.
   ['anuncio-y-menu',      ['*Headline:* Reserva Tu Mesa\n*Source URL:* https://fb.me/7moX9t70T\n\nHola! Vi el video del machacado epazote y quisiera reservar una mesa\nMenú', 'el sábado', 'somos 3 a las 10']],
+  // Caso real 29/10/2026 (Mireya): pregunta precio desde el anuncio; antes saltaba directo a pedir nombre y día.
+  ['anuncio-precio',      ['*Headline:* Reserva Tu Mesa\n*Source URL:* https://fb.me/4XN42LFrA\n\nHola! Vi el video de pancakes de temporada y quisiera reservar una mesa\nPrecio\nPara 5 personas', 'los pancakes', 'el domingo a las 10, Mireya']],
   ['viene-anuncio',       ['Hola, vengo del video del cabrito', 'que lleva?', 'y a que hora se puede ir a cenar?']],
   ['recomiendame',        ['que me recomiendas?', 'para cenar', 'y de postre?']],
   ['ninos',               ['tienen algo para niños?', 'los domingos tambien hay actividades?', 'ok']],

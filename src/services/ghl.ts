@@ -54,9 +54,31 @@ export async function sendMessage(
     body: JSON.stringify({
       type: channel,
       contactId,
-      message,
+      message: formatoParaCanal(message, channel),
     }),
   });
+}
+
+/**
+ * Instagram y Messenger no tienen negritas: el `*Machacado Epazote*` de
+ * WhatsApp llega con los asteriscos literales. Aquí se quitan, para que el
+ * prompt y normalizeWhatsAppFormat sigan escribiendo para WhatsApp sin saber
+ * por dónde sale el mensaje.
+ */
+export function formatoParaCanal(message: string, channel: GhlChannel): string {
+  if (channel !== 'IG' && channel !== 'FB') return message;
+  return message.replace(/\*(?=\S)([^*\n]*?\S)\*/g, '$1');
+}
+
+/**
+ * El WhatsApp que da por chat quien escribe por Instagram o Messenger, en el
+ * formato en que GHL guarda los de WhatsApp (+521 + 10 dígitos). Vacío si no
+ * son 10 dígitos de México (con o sin 52/521 delante).
+ */
+export function telefonoDeChat(texto: unknown): string {
+  const d = String(texto ?? '').replace(/\D/g, '');
+  const diez = d.length === 10 ? d : /^521?\d{10}$/.test(d) ? d.slice(-10) : '';
+  return diez ? `+521${diez}` : '';
 }
 
 /**

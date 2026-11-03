@@ -37,10 +37,10 @@ import type { GhlChannel } from '../types';
 
 /**
  * Los canales que este bot contesta: los que tienen workflow de webhook en GHL.
- * Hoy solo WhatsApp. Si algún día se conecta Facebook o Instagram, se agregan
- * aquí además de en GHL.
+ * WhatsApp, más Instagram y Messenger desde el 3/11/2026. Correo, SMS y demás
+ * siguen fuera: el barrido ve toda la location y no debe contestarlos.
  */
-export const CANALES_ATENDIDOS: ReadonlySet<GhlChannel> = new Set<GhlChannel>(['WhatsApp']);
+export const CANALES_ATENDIDOS: ReadonlySet<GhlChannel> = new Set<GhlChannel>(['WhatsApp', 'IG', 'FB']);
 
 /**
  * Cuánto hacia atrás se considera "nuevo". Acota que el primer barrido tras un

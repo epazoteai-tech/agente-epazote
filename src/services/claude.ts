@@ -295,6 +295,10 @@ function buildTools(): Anthropic.Tool[] {
             type: 'string',
             description: 'Ocasión u observaciones (cumpleaños, silla para bebé, terraza...). Vacío si no hay.',
           },
+          telefono: {
+            type: 'string',
+            description: 'Solo si el estado del teléfono es "no_phone_yet" (Instagram o Messenger): el número de WhatsApp que te dio el contacto. Omítelo en WhatsApp.',
+          },
         },
         required: ['nombre', 'fecha', 'hora', 'personas'],
       },

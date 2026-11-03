@@ -55,10 +55,25 @@ check('foto sin pie SÍ entra (el comprobante suele llegar así)',
   candidatosParaIncorporar([msg('z', '', '2026-10-05T16:25:20.000Z', { url: 'https://x/a.jpg', kind: 'image', ext: 'jpg' })], AHORA).length, 1);
 
 console.log('\nSolo los canales que este bot atiende\n');
-check('un correo o un mensaje de Facebook NO se incorpora',
+check('un correo o un SMS NO se incorpora',
   candidatosParaIncorporar([msg('e', 'factura?', '2026-10-05T16:25:20.000Z', null, 'Email'),
-                            msg('fb', 'hola', '2026-10-05T16:25:21.000Z', null, 'FB')], AHORA).length, 0);
+                            msg('s', 'hola', '2026-10-05T16:25:21.000Z', null, 'SMS')], AHORA).length, 0);
 check('WhatsApp sí', candidatosParaIncorporar([msg('w', 'hola', '2026-10-05T16:25:20.000Z')], AHORA).length, 1);
+check('Instagram y Messenger sí',
+  candidatosParaIncorporar([msg('ig', 'me manda el menú?', '2026-10-05T16:25:20.000Z', null, 'IG'),
+                            msg('fb', 'hola', '2026-10-05T16:25:21.000Z', null, 'FB')], AHORA).length, 2);
+
+console.log('\nFormato y teléfono en Instagram y Messenger\n');
+const { formatoParaCanal, telefonoDeChat } = require('../dist/services/ghl');
+check('IG sin asteriscos', formatoParaCanal('El *Machacado Epazote* está en $289', 'IG'), 'El Machacado Epazote está en $289');
+check('FB sin asteriscos', formatoParaCanal('*Pancakes* y *Machacado*', 'FB'), 'Pancakes y Machacado');
+check('WhatsApp conserva la negrita', formatoParaCanal('El *Machacado Epazote*', 'WhatsApp'), 'El *Machacado Epazote*');
+check('un asterisco suelto se queda', formatoParaCanal('2 * 3 personas', 'IG'), '2 * 3 personas');
+check('10 dígitos con espacios', telefonoDeChat('844 123 4567'), '+5218441234567');
+check('con +52', telefonoDeChat('+52 844 123 4567'), '+5218441234567');
+check('con +521', telefonoDeChat('+5218441234567'), '+5218441234567');
+check('incompleto queda vacío', telefonoDeChat('844 123'), '');
+check('sin dato queda vacío', telefonoDeChat(undefined), '');
 
 console.log('\nDuplicados: solo contra lo que entró sin id, y nunca con "contiene" (E161)\n');
 // Coexistencia con WhatsApp Business: GHL importa las llamadas como TYPE_CALL.

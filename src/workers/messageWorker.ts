@@ -20,6 +20,7 @@ import {
   createNote,
   getContact,
   seedCustomFields,
+  telefonoDeChat,
 } from '../services/ghl';
 import {
   getFreeSlots,
@@ -1457,7 +1458,10 @@ async function handleRegistrarReserva(
   }
 
   const nombre = solicitud.nombre.trim().replace(/\s+/g, ' ');
-  const { telefono, anuncio, origen } = await datosParaLaMesa(contactId, nombre, 'registrar_reserva');
+  const datos = await datosParaLaMesa(contactId, nombre, 'registrar_reserva');
+  const { anuncio, origen } = datos;
+  // Instagram y Messenger no traen teléfono: va el WhatsApp que dio por chat.
+  const telefono = datos.telefono || telefonoDeChat(input.telefono);
 
   try {
     // Todos los campos ANTES del tag: el Workflow dispara con el tag y lee el

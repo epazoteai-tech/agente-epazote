@@ -39,7 +39,7 @@ import {
 import { fechaGhlAMs, inicioDelDiaMs } from '../fechas';
 import { mensajesDePersona, nuevosParaHistorial } from '../services/atencion-humana';
 import { transcribirAudio } from '../services/whisper';
-import { incorporarInboundNuevos } from '../services/inbound';
+import { incorporarInboundNuevos, esSoloMediaSinTexto } from '../services/inbound';
 import { db } from '../db/client';
 import { getConfig } from '../config';
 import { dentroDeHorario, fechaLocalDelSlot } from '../services/horario';
@@ -1797,6 +1797,15 @@ export async function startMessageWorker(concurrency = 5) {
         await bloquearContacto(contactId, 'mensaje idéntico repetido: otro bot').catch(() => {});
         await cancelarFollowUpsPendientes(contactId).catch(() => {});
         console.warn(`[loop-guard] mismo mensaje repetido ${REPETICIONES_DE_BOT}+ veces, contacto a lista negra | contact=${contactId}`);
+        return;
+      }
+
+      // 1.5 Mención en historia de Instagram (solo imagen o video, sin texto):
+      // silencio total. No se guarda ni se contesta, así tampoco hay seguimiento.
+      const canalDelTurno =
+        channel ?? ((conversation.metadata as { channel?: string } | null)?.channel as GhlChannel | undefined);
+      if (canalDelTurno === 'IG' && esSoloMediaSinTexto(messageToProcess)) {
+        console.log(`[worker] Instagram solo con imagen o video (mención en historia) — no se contesta | contact=${contactId}`);
         return;
       }
 

@@ -131,6 +131,19 @@ export function marcadorDeMedia(kind: string): string {
   }
 }
 
+/**
+ * Instagram: quien menciona a Epazote en su historia le llega como DM sin
+ * texto, solo con la imagen o el video (GHL no lo marca distinto de una foto
+ * mandada por DM). Jorge pidió no contestar eso (11/11/2026). Si en la misma
+ * tanda hay texto, sí se contesta.
+ */
+export function esSoloMediaSinTexto(texto: string): boolean {
+  const lineas = texto.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lineas.length === 0) return false;
+  const marcadores = new Set(['image', 'pdf', 'audio', 'other'].map(marcadorDeMedia));
+  return lineas.every((l) => marcadores.has(l));
+}
+
 /** El texto de UN mensaje como lo tiene que leer el modelo. */
 export function textoDeMensaje(m: MensajeInbound): string {
   if (!m.attachment) return m.body;

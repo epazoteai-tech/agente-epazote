@@ -104,6 +104,16 @@ check('comprobante con pie: marcador primero',
 const audio = (id, iso) => msg(id, '', iso, { url: `https://x/${id}.ogg`, kind: 'audio', ext: 'ogg' });
 check('dos audios quedan en orden', candidatosParaIncorporar([audio('b', '2026-10-05T16:25:30.000Z'), audio('a', '2026-10-05T16:25:20.000Z')], AHORA).map((m) => m.id), ['a', 'b']);
 
+console.log('\nMención en historia de Instagram (solo media, sin texto)\n');
+const { esSoloMediaSinTexto } = require('../dist/services/inbound');
+check('una imagen sola', esSoloMediaSinTexto('[el contacto envió una imagen]'), true);
+check('un video solo (archivo)', esSoloMediaSinTexto('[el contacto envió un archivo]'), true);
+check('tres imágenes seguidas', esSoloMediaSinTexto('[el contacto envió una imagen]\n[el contacto envió una imagen]\n[el contacto envió un archivo]'), true);
+check('imagen con texto sí se contesta', esSoloMediaSinTexto('[el contacto envió una imagen]\nQue bello !'), false);
+check('texto antes de la imagen sí se contesta', esSoloMediaSinTexto('Buenas tardes\n[el contacto envió una imagen]'), false);
+check('texto normal', esSoloMediaSinTexto('Hola, me puede mandar el menú'), false);
+check('vacío no cuenta', esSoloMediaSinTexto(''), false);
+
 console.log('\nEl barrido: a quién le pregunta\n');
 const t = (s) => Date.parse(`2026-10-05T${s}.000Z`);
 const desde = t('17:50:00');

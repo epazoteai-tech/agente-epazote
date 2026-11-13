@@ -7,7 +7,7 @@
  * (el ROAS por creativo es la métrica que se le vende al cliente) y un show
  * rate que cuente como no-show lo que todavía no pasa.
  */
-const { campanaDeOrigen, embudo, gastoDelPeriodo, esCambio, ocasionLimpia, accionEtiquetaConfirmada, ETIQUETA_CONFIRMADA } = require('../dist/services/mesa');
+const { campanaDeOrigen, embudo, gastoDelPeriodo, esCambio, ocasionLimpia, esLaMismaMesa, accionEtiquetaConfirmada, ETIQUETA_CONFIRMADA } = require('../dist/services/mesa');
 
 let fallas = 0;
 function check(nombre, real, esperado) {
@@ -54,6 +54,14 @@ check('gasto de un mes', gastoDelPeriodo(3000, 30), 3000);
 
 check('detecta cambio', esCambio('CAMBIO de la solicitud anterior. Ahora son 4'), true);
 check('no confunde una ocasión normal', esCambio('cumpleaños, cambio de planes'), false);
+
+// Una sola mesa viva por contacto: misma mesa = mismo día, hora y personas.
+const viva = { fecha: '2026-11-16', hora: '11:00', personas: 7 };
+check('misma mesa aunque cambie la ocasión', esLaMismaMesa(viva, { fecha: '2026-11-16', hora: '11:00', personas: 7 }), true);
+check('misma mesa con hora 9:00 vs 09:00', esLaMismaMesa({ fecha: '2026-11-07', hora: '09:00', personas: 6 }, { fecha: '2026-11-07', hora: '9:00', personas: 6 }), true);
+check('otra hora es cambio', esLaMismaMesa(viva, { fecha: '2026-11-16', hora: '11:30', personas: 7 }), false);
+check('más personas es cambio', esLaMismaMesa(viva, { fecha: '2026-11-16', hora: '11:00', personas: 8 }), false);
+check('otro día es cambio', esLaMismaMesa(viva, { fecha: '2026-11-17', hora: '11:00', personas: 7 }), false);
 check('quita la marca de cambio', ocasionLimpia('CAMBIO de la solicitud anterior: cumpleaños'), 'cumpleaños');
 
 console.log(fallas ? `\n${fallas} FALLA(S)` : '\nTodo bien');

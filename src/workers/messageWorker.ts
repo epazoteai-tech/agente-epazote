@@ -51,8 +51,8 @@ import {
 import { contactoBloqueadoAsync, bloquearContacto } from '../blocklist';
 import { esMensajeRepetidoDeBot, REPETICIONES_DE_BOT } from '../loop-guard';
 import { pareceNombreReal } from '../nombres';
-import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu, quitarCalificativos } from '../services/reservas';
-import { guardarReservaDelBot, datosParaLaMesa, guardarEscaladaEnMesa, ETIQUETA_CONFIRMADA } from '../services/mesa';
+import { validarReserva, mensajeDeOrigen, quitarConfirmacionDeMesa, diceQueRegistro, asegurarMenu, quitarCalificativos, fechaLarga, horaLegible } from '../services/reservas';
+import { guardarReservaDelBot, datosParaLaMesa, guardarEscaladaEnMesa, ETIQUETA_CONFIRMADA, reservaVivaDelContacto, esLaMismaMesa, ocasionLimpia } from '../services/mesa';
 
 /**
  * Estado compartido entre las tools de UN mismo turno (un job del worker).
@@ -544,6 +544,30 @@ async function handleConsultarDisponibilidad(
  * viernes", y lo leyó como si fuera de hoy. El dato ya estaba en GHL; nadie se
  * lo entregaba (E87/E123). Best-effort: si GHL falla, el turno sigue sin esto.
  */
+/**
+ * La mesa viva del contacto en la Mesa (Epazote no usa calendario). Sin esto,
+ * el historial solo guarda el texto y no la tool, y en un turno de "gracias"
+ * el modelo creía que no había registrado y volvía a hacerlo (13/11/2026).
+ */
+async function contextoDeReserva(contactId: string): Promise<string> {
+  const res = getConfig().reservations;
+  if (!res) return '';
+  try {
+    const viva = await reservaVivaDelContacto(contactId, res.timezone);
+    if (!viva) return '';
+    const [h, m] = viva.hora.split(':').map(Number);
+    return (
+      `- Este contacto YA tiene una mesa registrada en el sistema: ${viva.personas} personas el ${fechaLarga(viva.fecha)} ` +
+      `a las ${horaLegible(h * 60 + (m || 0))} (${viva.estado === 'confirmada' ? 'el equipo ya la confirmó' : 'pendiente de que el equipo la confirme'}). ` +
+      `No la vuelvas a registrar por un "gracias" o una despedida. Llama registrar_reserva solo si pide cambiar día, hora o personas, ` +
+      `o si agrega un detalle para el equipo (con los mismos datos y el detalle en "ocasion").`
+    );
+  } catch (err) {
+    console.warn(`[worker] contexto de reserva falló: ${(err as Error).message}`);
+    return '';
+  }
+}
+
 export async function contextoDeCitas( // exportada solo para pruebas
 contactId: string): Promise<string> {
   const cfg = getConfig();
@@ -1458,6 +1482,35 @@ async function handleRegistrarReserva(
   }
 
   const nombre = solicitud.nombre.trim().replace(/\s+/g, ' ');
+
+  // Ya tiene esta misma mesa viva en la Mesa (mismo día, hora y personas):
+  // no se vuelve a avisar al equipo ni se crea otra fila. Si trae un detalle
+  // nuevo ("área de adentro"), se guarda en la ocasión y en una nota.
+  // Una sola mesa viva por contacto (ver reservaVivaDelContacto).
+  const viva = await reservaVivaDelContacto(contactId, res.timezone).catch(() => null);
+  if (viva && esLaMismaMesa(viva, solicitud)) {
+    const ocasionNueva = ocasionLimpia(solicitud.ocasion);
+    await guardarReservaDelBot(
+      { contactId, nombre, telefono: '', fecha: solicitud.fecha, hora: solicitud.hora, personas: solicitud.personas,
+        ocasion: solicitud.ocasion, turno: v.turno, origen: '', anuncio: null },
+      res.timezone
+    ).catch((err) => console.error(`[mesa] no se pudo actualizar la reserva viva | contact=${contactId}: ${(err as Error).message}`));
+    if (ocasionNueva) {
+      updateContactCustomField(contactId, res.fields.ocasion, ocasionNueva).catch(() => {});
+      createNote(contactId, `[DETALLE DE LA RESERVA] ${v.resumen}. ${ocasionNueva}`).catch(() => {});
+    }
+    turn.reservaRegistrada = true;
+    console.log(`[tool:registrar_reserva] misma mesa viva id=${viva.id}, no se repite | contact=${contactId}`);
+    return JSON.stringify({
+      ok: true,
+      ya_estaba_registrada: true,
+      resumen: v.resumen,
+      aviso_importante:
+        'Esta mesa YA estaba registrada y el equipo ya tiene el aviso; si trajo un detalle nuevo, quedó anotado. ' +
+        'No la vuelvas a registrar ni digas que la registraste otra vez, y no la confirmes: el equipo le confirma por aquí.',
+    });
+  }
+
   const datos = await datosParaLaMesa(contactId, nombre, 'registrar_reserva');
   const { anuncio, origen } = datos;
   // Instagram y Messenger no traen teléfono: va el WhatsApp que dio por chat.
@@ -1908,7 +1961,7 @@ export async function startMessageWorker(concurrency = 5) {
           async (toolName, input) => handleTool(toolName, input, contactId, turn),
           inboundChannel,
           attachmentBlocks,
-          await contextoDeCitas(contactId)
+          [await contextoDeCitas(contactId), await contextoDeReserva(contactId)].filter(Boolean).join('\n')
         );
         replyText = result.text;
         toolCalls = result.toolCalls;

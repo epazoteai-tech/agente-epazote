@@ -132,25 +132,65 @@ export interface ReservaDelBot {
  * show rate contaría un no-show que nunca existió. Si no hay ninguna viva, se
  * registra como nueva.
  */
+export interface ReservaViva {
+  id: number;
+  fecha: string; // YYYY-MM-DD
+  hora: string; // HH:MM
+  personas: number;
+  estado: string;
+}
+
+/**
+ * La próxima mesa viva (solicitada o confirmada, de hoy en adelante) del
+ * contacto. Una sola por contacto: Jorge la pidió así para tener control
+ * (13/11/2026), porque el bot volvía a registrar la misma mesa al recibir un
+ * "gracias" o una preferencia y la Mesa se llenaba de copias.
+ */
+export async function reservaVivaDelContacto(contactId: string, tz: string): Promise<ReservaViva | null> {
+  const { rows } = await db.query(
+    `SELECT id, to_char(fecha, 'YYYY-MM-DD') AS fecha, hora, personas, estado
+       FROM reservas
+      WHERE contact_id = $1 AND estado IN ('solicitada', 'confirmada')
+        AND fecha >= (now() AT TIME ZONE $2)::date
+      ORDER BY fecha, hora LIMIT 1`,
+    [contactId, tz]
+  );
+  const r = rows[0];
+  return r ? { id: Number(r.id), fecha: r.fecha, hora: r.hora, personas: Number(r.personas), estado: r.estado } : null;
+}
+
+/** Misma mesa: mismo día, hora y personas (la ocasión puede traer un detalle nuevo). */
+export function esLaMismaMesa(viva: Pick<ReservaViva, 'fecha' | 'hora' | 'personas'>, r: { fecha: string; hora: string; personas: number }): boolean {
+  const hhmm = (h: string) => String(h ?? '').trim().slice(0, 5).padStart(5, '0');
+  return viva.fecha === r.fecha && hhmm(viva.hora) === hhmm(r.hora) && viva.personas === r.personas;
+}
+
 export async function guardarReservaDelBot(
   r: ReservaDelBot,
   tz: string
-): Promise<{ id: number; accion: 'nueva' | 'cambio' }> {
+): Promise<{ id: number; accion: 'nueva' | 'cambio' | 'misma' }> {
   const ocasion = ocasionLimpia(r.ocasion);
-  if (esCambio(r.ocasion)) {
-    const { rows } = await db.query(
+  // Si ya tiene una mesa viva, se actualiza esa: nunca una segunda fila.
+  // Misma mesa → solo nombre y ocasión, sin tocar el estado (si ya estaba
+  // confirmada, sigue confirmada). Otro día, hora o personas → es un cambio
+  // y vuelve a "solicitada" para que el equipo la confirme de nuevo.
+  const viva = await reservaVivaDelContacto(r.contactId, tz);
+  if (viva) {
+    if (esLaMismaMesa(viva, r)) {
+      await db.query(
+        `UPDATE reservas SET nombre = $2, ocasion = COALESCE(NULLIF($3, ''), ocasion), actualizado_at = now() WHERE id = $1`,
+        [viva.id, r.nombre, ocasion]
+      );
+      return { id: viva.id, accion: 'misma' };
+    }
+    await db.query(
       `UPDATE reservas
           SET nombre = $2, fecha = $3, hora = $4, personas = $5, ocasion = $6, turno = $7,
               estado = 'solicitada', confirmada_at = NULL, actualizado_at = now()
-        WHERE id = (
-          SELECT id FROM reservas
-           WHERE contact_id = $1 AND estado IN ('solicitada', 'confirmada')
-             AND fecha >= (now() AT TIME ZONE $8)::date
-           ORDER BY fecha, hora LIMIT 1)
-        RETURNING id`,
-      [r.contactId, r.nombre, r.fecha, r.hora, r.personas, ocasion, r.turno, tz]
+        WHERE id = $1`,
+      [viva.id, r.nombre, r.fecha, r.hora, r.personas, ocasion, r.turno]
     );
-    if (rows[0]) return { id: Number(rows[0].id), accion: 'cambio' };
+    return { id: viva.id, accion: 'cambio' };
   }
   // Si este contacto ya estaba en la Mesa como escalado sin fecha (pidió mesa,
   // lo atendió una persona y después el bot la registró completa), se completa

@@ -1361,6 +1361,12 @@ async function handleEscalarAHumano(
     // había escalado antes no le llegaba a nadie. Pero si ya se escaló hace
     // unos minutos, no se vuelve a notificar: bastan la nota y la etapa.
     const reciente = await escaladoHaceMenosDe(contactId, 10);
+    // El motivo va ANTES del tag: el Workflow que dispara con el tag lo lee
+    // para el aviso al equipo y, si llega después, saldría el motivo anterior.
+    if (cfg.escalation.motivo_field) {
+      await updateContactCustomField(contactId, cfg.escalation.motivo_field, motivoEscalacion.replace(/\s+/g, ' ').trim())
+        .catch((err) => console.error(`[tool:escalar_a_humano] no se pudo escribir el motivo | contact=${contactId}: ${(err as Error).message}`));
+    }
     if (!reciente) await reponerTags(contactId, [cfg.escalation.tag]);
     await setMeta(contactId, { ultima_escalacion_at: new Date().toISOString() });
     turn.escalado = true;

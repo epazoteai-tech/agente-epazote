@@ -314,6 +314,9 @@ const EscalationSchema = z.object({
   tag: z.string().min(1).default('requiere_humano'),
   // Opcional: etapa del pipeline a la que se mueve la opportunity al escalar.
   stage: z.string().optional(),
+  // Opcional: id del custom field donde se escribe el motivo (lo lee la
+  // plantilla que avisa al equipo). Se llena ANTES de poner el tag.
+  motivo_field: z.string().optional(),
 });
 
 const ConfigSchema = z.object({

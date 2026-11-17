@@ -196,6 +196,8 @@ follow_ups:
 escalation:
   tag: atencion-humana
   stage: Atención humana
+  # Custom field "Motivo escalación" (contact.motivo_escalacion, creado el 16/11/2026).
+  motivo_field: x7P0Ufe3uXVocW6MPWvd
 
 # ===========================================================================
 # Loop-guard — corta conversaciones con otros bots (defaults de la plantilla)

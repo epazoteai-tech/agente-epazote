@@ -63,11 +63,17 @@ function bateria(cfg) {
   return reglas;
 }
 
+// Las conversaciones cuyo nombre termina en "-ig" corren como Instagram (sin teléfono).
+let canalActual = 'whatsapp';
+
 function bloquesSystem() {
   // Mismo armado que services/claude.ts: estático cacheado primero.
+  const canal = canalActual === 'instagram'
+    ? '- Canal de entrada: instagram\n- Estado del teléfono del contacto: no_phone_yet\n'
+    : '- Canal de entrada: whatsapp\n- Estado del teléfono del contacto: tiene WhatsApp\n';
   return [
     { type: 'text', text: buildSystemPrompt(), cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: '\n\n---\n## CONTEXTO DEL TURNO\n- Canal de entrada: whatsapp\n- Estado del teléfono del contacto: tiene WhatsApp\n' },
+    { type: 'text', text: '\n\n---\n## CONTEXTO DEL TURNO\n' + canal },
     // Sin la fecha de hoy el modelo no puede convertir "mañana" en YYYY-MM-DD
     // para registrar_reserva (en producción lo pone getDateContext).
     ...(getConfig().reservations ? [{ type: 'text', text: contextoTemporal() }] : []),
@@ -151,6 +157,7 @@ async function correr(client, spec, convs, cfg) {
   const transcripciones = {};
   const t0 = Date.now();
   for (const [nombre, turnos] of convs) {
+    canalActual = nombre.endsWith('-ig') ? 'instagram' : 'whatsapp';
     const messages = [];
     transcripciones[nombre] = [];
     for (const turno of turnos) {

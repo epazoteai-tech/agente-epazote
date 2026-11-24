@@ -47,7 +47,8 @@ async function ghlFetch(
 export async function sendMessage(
   contactId: string,
   message: string,
-  channel: GhlChannel
+  channel: GhlChannel,
+  attachments?: string[]
 ): Promise<void> {
   await ghlFetch('/conversations/messages', {
     method: 'POST',
@@ -55,6 +56,7 @@ export async function sendMessage(
       type: channel,
       contactId,
       message: formatoParaCanal(message, channel),
+      ...(attachments?.length ? { attachments } : {}),
     }),
   });
 }

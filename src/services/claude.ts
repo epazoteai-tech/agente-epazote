@@ -305,6 +305,18 @@ function buildTools(): Anthropic.Tool[] {
     });
   }
 
+  if (cfg.reservations?.paquetes_posadas.length) {
+    tools.push({
+      name: 'mandar_paquetes_posadas',
+      description:
+        'Manda al contacto, como fotos y después de tu mensaje, las imágenes de los paquetes ' +
+        'navideños para posadas (desayunos, y comidas y cenas). Úsala cuando pregunte por ' +
+        'paquetes para posadas o eventos navideños, en cualquier canal. No la repitas si ya se ' +
+        'los mandaste: la tool te avisa.',
+      input_schema: { type: 'object' as const, properties: {} },
+    });
+  }
+
   if (cfg.follow_ups) {
     tools.push({
       name: 'cerrar_seguimiento',

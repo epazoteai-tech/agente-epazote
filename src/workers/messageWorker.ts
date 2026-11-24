@@ -85,6 +85,8 @@ interface TurnContext {
   escalado?: boolean;
   /** registrar_reserva dejó una solicitud registrada en este turno. */
   reservaRegistrada?: boolean;
+  /** mandar_paquetes_posadas pidió mandar las imágenes después del texto. */
+  mandarPaquetes?: boolean;
   /** Veces que agendar_cita rechazó un horario por no estar libre en este turno. */
   rechazosHorario?: number;
 }
@@ -190,6 +192,8 @@ async function handleTool(
       return handleActualizarCampo(input, contactId);
     case 'cerrar_seguimiento':
       return handleCerrarSeguimiento(input, contactId);
+    case 'mandar_paquetes_posadas':
+      return handleMandarPaquetesPosadas(contactId, turn);
     case 'registrar_reserva':
       return handleRegistrarReserva(input, contactId, turn);
   }
@@ -1396,6 +1400,28 @@ async function handleEscalarAHumano(
 }
 
 /**
+ * Las imágenes no salen aquí: se marcan en el turno y se mandan después del
+ * texto, para que el contacto lea primero el mensaje. El historial guarda solo
+ * texto, así que la bandera en metadata evita que el modelo las mande otra vez
+ * a cada pregunta sobre los paquetes.
+ */
+async function handleMandarPaquetesPosadas(contactId: string, turn: TurnContext): Promise<string> {
+  const at = Date.parse(String((await getMeta(contactId)).paquetes_posadas_at ?? ''));
+  if (!isNaN(at) && Date.now() - at < 6 * 60 * 60 * 1000) {
+    return JSON.stringify({
+      ok: true,
+      ya_enviados: true,
+      message: 'Ya le mandaste las imágenes de los paquetes hace rato: no se mandan otra vez. Contesta su pregunta con los datos de los paquetes.',
+    });
+  }
+  turn.mandarPaquetes = true;
+  return JSON.stringify({
+    ok: true,
+    message: 'Las imágenes de los paquetes salen solas justo después de tu mensaje. No pongas ligas ni digas "aquí abajo".',
+  });
+}
+
+/**
  * El contacto dijo que no ("no gracias", "por ahora no"): se apagan los
  * follow-ups pendientes y se deja una bandera para no programar más.
  *
@@ -2109,6 +2135,21 @@ export async function startMessageWorker(concurrency = 5) {
         for (let i = 0; i < parts.length; i++) {
           if (i > 0) await new Promise((r) => setTimeout(r, 800));
           await sendMessage(contactId, parts[i], inboundChannel);
+        }
+
+        // 5.5 Imágenes de los paquetes de posadas (mandar_paquetes_posadas),
+        // una foto por menú, después del texto.
+        if (turn.mandarPaquetes) {
+          try {
+            for (const p of getConfig().reservations?.paquetes_posadas ?? []) {
+              await new Promise((r) => setTimeout(r, 800));
+              await sendMessage(contactId, p.nombre, inboundChannel, [p.url]);
+            }
+            await setMeta(contactId, { paquetes_posadas_at: new Date().toISOString() });
+            console.log(`[tool:mandar_paquetes_posadas] imágenes enviadas | contact=${contactId}`);
+          } catch (err) {
+            console.error(`[tool:mandar_paquetes_posadas] no se pudieron mandar | contact=${contactId}: ${(err as Error).message}`);
+          }
         }
 
         // 6. Programar follow-ups (solo si hay bloque follow_ups: en el yaml).

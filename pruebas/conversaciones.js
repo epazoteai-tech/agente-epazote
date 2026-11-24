@@ -27,7 +27,7 @@ module.exports = [
   ['quiere-humano',       ['me pasas con una persona?', 'no quiero hablar con un bot', 'ok']],
   ['ya-llegue',           ['ya estoy afuera', 'no encuentro la entrada del edificio', 'ok']],
   ['como-llegar',         ['en que edificio estan?', 'y por donde entro?', 'hay estacionamiento?', 'gracias']],
-  ['paquete-posada',      ['hola, tienen paquetes para posadas?', 'seriamos como 30 de la oficina', 'ok gracias']],
+  ['paquete-posada',      ['hola, tienen paquetes para posadas?', 'seriamos como 30 de la oficina', 'y el paquete 2 de cena que trae?', 'ok gracias']],
   ['paquete-posada-ig',   ['hola! que paquetes tienen para eventos navideños?', 'y cuanto cuesta?', 'ok']],
   ['prensa',              ['hola, soy creadora de contenido de comida en Saltillo', 'me gustaria hacer una colaboracion', 'con quien lo veo?']],
 

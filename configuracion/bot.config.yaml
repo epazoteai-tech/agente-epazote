@@ -151,12 +151,22 @@ reservations:
     - nombre: Comidas y cenas
       url: https://epazote.sellerstudio.mx/menu/comidas-y-cenas.pdf
   # Imágenes de los paquetes de posadas 2026 (de POSADAS_DESAYUNOS.pdf y
-  # POSADASCOMIDA_CENA.pdf). Las manda la tool mandar_paquetes_posadas como foto.
+  # POSADASCOMIDA_CENA.pdf). Las manda la tool mandar_paquetes_posadas como fotos.
+  # Cada menú va partido en 4 (portada, paquete 1, 2 y 3): la imagen entera
+  # medía 1080x6275 y WhatsApp la achicaba hasta verse borrosa.
   paquetes_posadas:
     - nombre: Posadas navideñas · Desayunos
-      url: https://epazote.sellerstudio.mx/menu/posadas-desayunos.jpg
+      urls:
+        - https://epazote.sellerstudio.mx/menu/posadas-desayunos-1.jpg
+        - https://epazote.sellerstudio.mx/menu/posadas-desayunos-2.jpg
+        - https://epazote.sellerstudio.mx/menu/posadas-desayunos-3.jpg
+        - https://epazote.sellerstudio.mx/menu/posadas-desayunos-4.jpg
     - nombre: Posadas navideñas · Comidas y cenas
-      url: https://epazote.sellerstudio.mx/menu/posadas-comidas-y-cenas.jpg
+      urls:
+        - https://epazote.sellerstudio.mx/menu/posadas-comidas-y-cenas-1.jpg
+        - https://epazote.sellerstudio.mx/menu/posadas-comidas-y-cenas-2.jpg
+        - https://epazote.sellerstudio.mx/menu/posadas-comidas-y-cenas-3.jpg
+        - https://epazote.sellerstudio.mx/menu/posadas-comidas-y-cenas-4.jpg
   fields:
     # "sábado 3 de octubre": lo lee el cliente en la plantilla de recordatorio.
     fecha: XA4CUd13njMLTVRhb3ZL

@@ -261,7 +261,7 @@ const ReservationsSchema = z
     // Opcional: menús en PDF que el bot manda por liga (ver asegurarMenu).
     menus: z.array(z.object({ nombre: z.string().min(1), url: z.string().url() })).default([]),
     // Opcional: imágenes de los paquetes de posadas que manda mandar_paquetes_posadas.
-    paquetes_posadas: z.array(z.object({ nombre: z.string().min(1), url: z.string().url() })).default([]),
+    paquetes_posadas: z.array(z.object({ nombre: z.string().min(1), urls: z.array(z.string().url()).min(1) })).default([]),
     fields: z.object({
       fecha: z.string().min(1),
       hora: z.string().min(1),

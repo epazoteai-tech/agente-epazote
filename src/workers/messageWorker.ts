@@ -2141,10 +2141,15 @@ export async function startMessageWorker(concurrency = 5) {
         // después del texto. Cada menú son varias fotos del tamaño de una
         // pantalla (una por paquete). Cada foto lleva texto: la app de WhatsApp
         // de GHL marca "failed" la que va sin él (text.body is required) y la
-        // API de GHL no avisa, así que no hay forma de reintentar.
+        // API de GHL no avisa, así que no hay forma de reintentar. Por WhatsApp
+        // las fotos no llegan (solo el texto): ahí va la liga a la página.
         if (turn.mandarPaquetes) {
           try {
-            for (const p of getConfig().reservations?.paquetes_posadas ?? []) {
+            const r = getConfig().reservations;
+            if (inboundChannel === 'WhatsApp' && r?.paquetes_posadas_pagina) {
+              await new Promise((res) => setTimeout(res, 800));
+              await sendMessage(contactId, `Aquí puedes ver los paquetes completos 👇\n${r.paquetes_posadas_pagina}`, inboundChannel);
+            } else for (const p of r?.paquetes_posadas ?? []) {
               for (const [i, url] of p.urls.entries()) {
                 await new Promise((r) => setTimeout(r, 800));
                 await sendMessage(contactId, `${p.nombre} · Paquete ${i + 1}`, inboundChannel, [url]);

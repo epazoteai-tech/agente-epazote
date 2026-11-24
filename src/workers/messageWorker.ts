@@ -2139,16 +2139,15 @@ export async function startMessageWorker(concurrency = 5) {
 
         // 5.5 Imágenes de los paquetes de posadas (mandar_paquetes_posadas),
         // después del texto. Cada menú son varias fotos del tamaño de una
-        // pantalla; el nombre va solo en la primera para que WhatsApp las
-        // agrupe. Si GHL no acepta una foto sin texto, se repite con el nombre.
+        // pantalla (una por paquete). Cada foto lleva texto: la app de WhatsApp
+        // de GHL marca "failed" la que va sin él (text.body is required) y la
+        // API de GHL no avisa, así que no hay forma de reintentar.
         if (turn.mandarPaquetes) {
           try {
             for (const p of getConfig().reservations?.paquetes_posadas ?? []) {
               for (const [i, url] of p.urls.entries()) {
                 await new Promise((r) => setTimeout(r, 800));
-                await sendMessage(contactId, i === 0 ? p.nombre : '', inboundChannel, [url]).catch(
-                  () => sendMessage(contactId, p.nombre, inboundChannel, [url])
-                );
+                await sendMessage(contactId, `${p.nombre} · Paquete ${i + 1}`, inboundChannel, [url]);
               }
             }
             await setMeta(contactId, { paquetes_posadas_at: new Date().toISOString() });

@@ -49,16 +49,63 @@ export async function sendMessage(
   message: string,
   channel: GhlChannel,
   attachments?: string[]
-): Promise<void> {
-  await ghlFetch('/conversations/messages', {
+): Promise<string | null> {
+  const r = (await ghlFetch('/conversations/messages', {
     method: 'POST',
-    body: JSON.stringify({
-      type: channel,
-      contactId,
-      message: formatoParaCanal(message, channel),
-      ...(attachments?.length ? { attachments } : {}),
-    }),
-  });
+    body: JSON.stringify(armarCuerpoDeMensaje(contactId, formatoParaCanal(message, channel), channel, attachments)),
+  })) as { messageId?: string; messageIds?: string[] } | null;
+  // El id sirve para reconocer después este mensaje como del bot: GHL a veces
+  // regresa la lista de mensajes sin `meta.marketplace.appId` (ver
+  // atencion-humana.ts) y sin el id el bot se tomaba por una persona.
+  return r?.messageId ?? r?.messageIds?.[0] ?? null;
+}
+
+/**
+ * Cuerpo del POST /conversations/messages. Portado de bot-bambinos (E158).
+ *
+ * EN WHATSAPP, `attachments` NO ENTREGA LA MEDIA: el mensaje sale `delivered`,
+ * la imagen se ve en la app de GHL, y al cliente le llega solo el texto (y sin
+ * texto sale `failed`). Le pasó a Epazote con las fotos de posadas el
+ * 24/11/2026. La forma que SÍ entrega es `whatsapp.media`, que no está en la
+ * documentación pública. Facebook e Instagram siguen con `attachments`.
+ */
+export function armarCuerpoDeMensaje(
+  contactId: string,
+  message: string,
+  channel: GhlChannel,
+  attachments?: string[]
+): Record<string, unknown> {
+  const body: Record<string, unknown> = { type: channel, contactId, message };
+  if (!attachments || attachments.length === 0) return body;
+  if (channel !== 'WhatsApp') {
+    body.attachments = attachments;
+    return body;
+  }
+  const url = attachments[0];
+  body.whatsapp = {
+    type: 'media',
+    media: { type: tipoDeMediaParaWhatsapp(url), url, name: nombreDeArchivo(url), caption: message },
+  };
+  // `media` lleva UN archivo, no una lista.
+  if (attachments.length > 1) {
+    console.warn(`[GHL] ${attachments.length} adjuntos para WhatsApp; solo se entrega el primero (whatsapp.media lleva uno)`);
+  }
+  return body;
+}
+
+/** El `media.type` de WhatsApp, deducido de la extensión (antes del "?"). */
+export function tipoDeMediaParaWhatsapp(url: string): 'image' | 'video' | 'audio' | 'document' {
+  const ext = (url.split('?')[0].split('.').pop() ?? '').toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].includes(ext)) return 'image';
+  if (['mp4', 'mov', '3gp'].includes(ext)) return 'video';
+  if (['ogg', 'opus', 'mp3', 'm4a', 'wav', 'aac'].includes(ext)) return 'audio';
+  return 'document';
+}
+
+export function nombreDeArchivo(url: string): string {
+  const ultimo = url.split('?')[0].split('/').pop() ?? '';
+  if (ultimo && /\.[a-z0-9]{2,5}$/i.test(ultimo)) return decodeURIComponent(ultimo);
+  return 'archivo';
 }
 
 /**

@@ -25,6 +25,7 @@ import { generateFollowUpMessage, normalizeWhatsAppFormat } from '../services/cl
 import { contactoBloqueadoAsync } from '../blocklist';
 import { pareceNombreReal } from '../nombres';
 import { mensajesDePersona } from '../services/atencion-humana';
+import { registrarEnviado, idsEnviados } from '../services/enviados';
 import { zonaDelNegocio } from '../services/ghl-calendar';
 import { getConfig } from '../config';
 import {
@@ -300,7 +301,7 @@ async function handleFollowUp(data: FollowUpJobData): Promise<void> {
   // — perder un recordatorio cuesta menos que escribirle encima a quien lo
   // está atendiendo.
   try {
-    const humanos = await mensajesDePersona(contactId, history, zonaDelNegocio());
+    const humanos = await mensajesDePersona(contactId, history, zonaDelNegocio(), await idsEnviados(contactId));
     if (humanos.length > 0) {
       console.log(`[follow-up] una persona está atendiendo, skip | contact=${contactId} attempt=${attempt}`);
       return;
@@ -351,7 +352,7 @@ async function handleFollowUp(data: FollowUpJobData): Promise<void> {
 
   // normalizeWhatsAppFormat: esta ruta mandaba el texto crudo, así que el
   // markdown del modelo (**negrita**) le llegaba literal al contacto.
-  await sendMessage(contactId, normalizeWhatsAppFormat(text), channel);
+  await registrarEnviado(contactId, await sendMessage(contactId, normalizeWhatsAppFormat(text), channel));
 
   // 9. Persistir: append al historial + incrementar contador.
   //

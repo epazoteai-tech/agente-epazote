@@ -154,9 +154,9 @@ reservations:
   # POSADASCOMIDA_CENA.pdf). Las manda la tool mandar_paquetes_posadas como fotos.
   # Cada menú va partido en 3 (paquete 1, 2 y 3, sin la portada): la imagen entera
   # medía 1080x6275 y WhatsApp la achicaba hasta verse borrosa.
-  # La app de WhatsApp conectada a GHL marca las fotos como entregadas pero solo
-  # llega el texto (prueba de Jorge, 24/11/2026). Por WhatsApp va esta página;
-  # por Facebook e Instagram sí llegan las fotos.
+  # Por WhatsApp salen con `whatsapp.media` (con `attachments` GHL las marcaba
+  # entregadas y no llegaban, prueba de Jorge 24/11/2026). La página solo se
+  # manda si GHL rechaza alguna foto.
   paquetes_posadas_pagina: https://epazote.sellerstudio.mx/menu/posadas.html
   paquetes_posadas:
     - nombre: Posadas navideñas · Desayunos

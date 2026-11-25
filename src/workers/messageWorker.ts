@@ -38,6 +38,7 @@ import {
 } from '../services/ghl-calendar';
 import { fechaGhlAMs, inicioDelDiaMs } from '../fechas';
 import { mensajesDePersona, nuevosParaHistorial } from '../services/atencion-humana';
+import { registrarEnviado, idsEnviados } from '../services/enviados';
 import { transcribirAudio } from '../services/whisper';
 import { incorporarInboundNuevos, esSoloMediaSinTexto } from '../services/inbound';
 import { db } from '../db/client';
@@ -1942,7 +1943,7 @@ export async function startMessageWorker(concurrency = 5) {
       // timeout deja al paciente hablando solo.
       let humanos: Awaited<ReturnType<typeof mensajesDePersona>> = [];
       try {
-        humanos = await mensajesDePersona(contactId, history, zonaDelNegocio());
+        humanos = await mensajesDePersona(contactId, history, zonaDelNegocio(), await idsEnviados(contactId));
       } catch (e) {
         console.warn(`[worker] no se pudo revisar si atiende una persona (se contesta): ${(e as Error).message}`);
       }
@@ -2134,32 +2135,37 @@ export async function startMessageWorker(concurrency = 5) {
         const parts = splitMessage(replyText);
         for (let i = 0; i < parts.length; i++) {
           if (i > 0) await new Promise((r) => setTimeout(r, 800));
-          await sendMessage(contactId, parts[i], inboundChannel);
+          await registrarEnviado(contactId, await sendMessage(contactId, parts[i], inboundChannel));
         }
 
         // 5.5 Imágenes de los paquetes de posadas (mandar_paquetes_posadas),
-        // después del texto. Cada menú son varias fotos del tamaño de una
-        // pantalla (una por paquete). Cada foto lleva texto: la app de WhatsApp
-        // de GHL marca "failed" la que va sin él (text.body is required) y la
-        // API de GHL no avisa, así que no hay forma de reintentar. Por WhatsApp
-        // las fotos no llegan (solo el texto): ahí va la liga a la página.
+        // después del texto, en TODOS los canales. Cada menú son varias fotos
+        // del tamaño de una pantalla (una por paquete), cada una con su pie.
+        // Por WhatsApp salen por `whatsapp.media` (ver armarCuerpoDeMensaje):
+        // con `attachments` GHL las marcaba entregadas y no llegaban. Si GHL
+        // rechaza alguna, va la liga a la página con todos los paquetes, para
+        // que el contacto no se quede sin verlos.
         if (turn.mandarPaquetes) {
-          try {
-            const r = getConfig().reservations;
-            if (inboundChannel === 'WhatsApp' && r?.paquetes_posadas_pagina) {
+          const r = getConfig().reservations;
+          let fallidas = 0;
+          for (const p of r?.paquetes_posadas ?? []) {
+            for (const [i, url] of p.urls.entries()) {
               await new Promise((res) => setTimeout(res, 800));
-              await sendMessage(contactId, `Aquí puedes ver los paquetes completos 👇\n${r.paquetes_posadas_pagina}`, inboundChannel);
-            } else for (const p of r?.paquetes_posadas ?? []) {
-              for (const [i, url] of p.urls.entries()) {
-                await new Promise((r) => setTimeout(r, 800));
-                await sendMessage(contactId, `${p.nombre} · Paquete ${i + 1}`, inboundChannel, [url]);
+              try {
+                await registrarEnviado(contactId, await sendMessage(contactId, `${p.nombre} · Paquete ${i + 1}`, inboundChannel, [url]));
+              } catch (err) {
+                fallidas++;
+                console.error(`[tool:mandar_paquetes_posadas] no salió ${url} | contact=${contactId}: ${(err as Error).message}`);
               }
             }
-            await setMeta(contactId, { paquetes_posadas_at: new Date().toISOString() });
-            console.log(`[tool:mandar_paquetes_posadas] imágenes enviadas | contact=${contactId}`);
-          } catch (err) {
-            console.error(`[tool:mandar_paquetes_posadas] no se pudieron mandar | contact=${contactId}: ${(err as Error).message}`);
           }
+          if (fallidas > 0 && r?.paquetes_posadas_pagina) {
+            await sendMessage(contactId, `Aquí puedes ver los paquetes completos 👇\n${r.paquetes_posadas_pagina}`, inboundChannel)
+              .then((id) => registrarEnviado(contactId, id))
+              .catch((err) => console.error(`[tool:mandar_paquetes_posadas] tampoco salió la liga | contact=${contactId}: ${(err as Error).message}`));
+          }
+          await setMeta(contactId, { paquetes_posadas_at: new Date().toISOString() });
+          console.log(`[tool:mandar_paquetes_posadas] imágenes enviadas (${fallidas} fallidas) | contact=${contactId}`);
         }
 
         // 6. Programar follow-ups (solo si hay bloque follow_ups: en el yaml).

@@ -334,6 +334,10 @@ export function pideMenu(texto: string): boolean {
   if (!/(^|[^a-záéíóúüñ])(men[uú]s?|la carta)(?=$|[^a-záéíóúüñ])/.test(t)) return false;
   // "tienen menú infantil?" es una pregunta sobre los Epazotitos, no una petición del PDF.
   if (/men[uú] infantil/.test(t) && !/(p[aá]s|manda|env[ií]a|ver|tienes el|me das)/.test(t)) return false;
+  // "foto del menú de las posadas": eso son los paquetes navideños, que manda
+  // mandar_paquetes_posadas como fotos. Pegarle los PDF del menú de diario
+  // confundía (24/11/2026).
+  if (/posadas?|navide[nñ]|navidad/.test(t)) return false;
   return true;
 }
 

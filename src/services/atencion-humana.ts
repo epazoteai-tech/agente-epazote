@@ -20,7 +20,7 @@
  */
 
 import { ChatMessage } from '../types';
-import { getConversationMessages } from './ghl';
+import { getConversationMessages, GhlMessage } from './ghl';
 import { fechaGhlAMs } from '../fechas';
 
 /** Minutos que el bot se calla después del último mensaje escrito por una persona. */
@@ -74,14 +74,33 @@ export interface MensajeDePersona {
 export async function mensajesDePersona(
   contactId: string,
   history: ChatMessage[],
-  tz: string
+  tz: string,
+  idsDelBot: Set<string> = new Set()
 ): Promise<MensajeDePersona[]> {
-  const desde = Date.now() - VENTANA_HUMANO_MIN * 60 * 1000;
+  const msgs = await getConversationMessages(contactId, 30);
+  return filtrarMensajesDePersona(msgs, history, tz, idsDelBot);
+}
+
+/**
+ * La parte pura de mensajesDePersona (para las pruebas). Un saliente es del
+ * bot si cumple CUALQUIERA: su id está en los que guardó el bot al mandar
+ * (services/enviados.ts), trae `meta.marketplace.appId`, o su texto está en el
+ * historial. El id va primero porque GHL a veces regresa la lista sin `meta`
+ * (medido el 24/11/2026: 3 de 6 consultas seguidas), y los pies de foto no van
+ * al historial.
+ */
+export function filtrarMensajesDePersona(
+  msgs: GhlMessage[],
+  history: ChatMessage[],
+  tz: string,
+  idsDelBot: Set<string> = new Set(),
+  ahoraMs: number = Date.now()
+): MensajeDePersona[] {
+  const desde = ahoraMs - VENTANA_HUMANO_MIN * 60 * 1000;
   const delBot = history
     .filter((m) => m.role === 'assistant' && m.origen !== 'humano')
     .map((m) => norm(m.content));
 
-  const msgs = await getConversationMessages(contactId, 30);
   const entrantes = msgs
     .filter((m) => m.direction === 'inbound')
     .map((m) => fechaGhlAMs(m.dateAdded, tz))
@@ -90,6 +109,7 @@ export async function mensajesDePersona(
     .filter((m) => {
       if (m.direction !== 'outbound') return false;
       if (!m.messageType || m.messageType.startsWith('TYPE_ACTIVITY')) return false;
+      if (m.id && idsDelBot.has(m.id)) return false;
       if (m.meta?.marketplace?.appId) return false;
       const body = (m.body ?? '').trim();
       if (!body) return false;
